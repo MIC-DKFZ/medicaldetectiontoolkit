@@ -128,9 +128,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str,  default='train_test',
                         help='one out of: train / test / train_test / analysis / create_exp')
-    parser.add_argument('--folds', nargs='+', type=int, default=[0],
+    parser.add_argument('--folds', nargs='+', type=int, default=None,
                         help='None runs over all folds in CV. otherwise specify list of folds.')
-    parser.add_argument('--exp_dir', type=str, default='/mnt/hdd/experiments/segmentation/final_test',
+    parser.add_argument('--exp_dir', type=str, default='/path/to/experiment/directory',
                         help='path to experiment dir. will be created if non existent.')
     parser.add_argument('--server_env', default=False, action='store_true',
                         help='change IO settings to deploy models on a cluster.')
