@@ -166,6 +166,7 @@ class TrainingPlot_2Panel():
 
         self.file_name = cf.plot_dir + '/monitor_{}'.format(cf.fold)
         self.exp_name = cf.fold_dir
+        self.do_validation = cf.do_validation
         self.separate_values_dict = cf.assign_values_to_extra_figure
         self.figure_list = []
         for n in range(cf.n_monitoring_figures):
@@ -183,11 +184,13 @@ class TrainingPlot_2Panel():
 
         for figure_ix in range(len(self.figure_list)):
             fig = self.figure_list[figure_ix]
-            detection_monitoring_plot(fig.ax1, metrics, self.exp_name, self.color_palette, epoch, figure_ix, self.separate_values_dict)
+            detection_monitoring_plot(fig.ax1, metrics, self.exp_name, self.color_palette, epoch, figure_ix,
+                                      self.separate_values_dict,
+                                      self.do_validation)
             fig.savefig(self.file_name + '_{}'.format(figure_ix))
 
 
-def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict):
+def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict, do_validation):
 
     monitor_values_keys = metrics['train']['monitor_values'][1][0].keys()
     separate_values = [v for fig_ix in separate_values_dict.values() for v in fig_ix]
@@ -203,13 +206,16 @@ def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figu
     for kix, pk in enumerate(plot_keys):
         if pk in metrics['train'].keys():
             y_train = metrics['train'][pk][1:]
-            y_val = metrics['val'][pk][1:]
+            if do_validation:
+                y_val = metrics['val'][pk][1:]
         else:
             y_train = [np.mean([er[pk] for er in metrics['train']['monitor_values'][e]]) for e in x]
-            y_val = [np.mean([er[pk] for er in metrics['val']['monitor_values'][e]]) for e in x]
+            if do_validation:
+                y_val = [np.mean([er[pk] for er in metrics['val']['monitor_values'][e]]) for e in x]
 
         ax1.plot(x, y_train, label='train_{}'.format(pk), linestyle='--', color=color_palette[kix])
-        ax1.plot(x, y_val, label='val_{}'.format(pk), linestyle='-', color=color_palette[kix])
+        if do_validation:
+            ax1.plot(x, y_val, label='val_{}'.format(pk), linestyle='-', color=color_palette[kix])
 
     if epoch == 1:
         box = ax1.get_position()

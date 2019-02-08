@@ -121,12 +121,19 @@ void crop_and_resize_forward(
     const int crop_width,
     THFloatTensor * crops
 ) {
-    const int batch_size = image->size[0];
-    const int depth = image->size[1];
-    const int image_height = image->size[2];
-    const int image_width = image->size[3];
+    //const int batch_size = image->size[0];
+    //const int depth = image->size[1];
+    //const int image_height = image->size[2];
+    //const int image_width = image->size[3];
 
-    const int num_boxes = boxes->size[0];
+    //const int num_boxes = boxes->size[0];
+
+    const int batch_size = THFloatTensor_size(image, 0);
+    const int depth = THFloatTensor_size(image, 1);
+    const int image_height = THFloatTensor_size(image, 2);
+    const int image_width = THFloatTensor_size(image, 3);
+
+    const int num_boxes = THFloatTensor_size(boxes, 0);
 
     // init output space
     THFloatTensor_resize4d(crops, num_boxes, depth, crop_height, crop_width);
@@ -160,16 +167,26 @@ void crop_and_resize_backward(
     THIntTensor * box_index,    // range in [0, batch_size)
     THFloatTensor * grads_image // resize to [bsize, c, hc, wc]
 )
-{   
+{
     // shape
-    const int batch_size = grads_image->size[0];
-    const int depth = grads_image->size[1];
-    const int image_height = grads_image->size[2];
-    const int image_width = grads_image->size[3];
+    //const int batch_size = grads_image->size[0];
+    //const int depth = grads_image->size[1];
+    //const int image_height = grads_image->size[2];
+    //const int image_width = grads_image->size[3];
 
-    const int num_boxes = grads->size[0];
-    const int crop_height = grads->size[2];
-    const int crop_width = grads->size[3];
+    //const int num_boxes = grads->size[0];
+    //const int crop_height = grads->size[2];
+    //const int crop_width = grads->size[3];
+
+    const int batch_size = THFloatTensor_size(grads_image, 0);
+    const int depth = THFloatTensor_size(grads_image, 1);
+    const int image_height = THFloatTensor_size(grads_image, 2);
+    const int image_width = THFloatTensor_size(grads_image, 3);
+
+    const int num_boxes = THFloatTensor_size(grads, 0);
+    const int crop_height = THFloatTensor_size(grads,2);
+    const int crop_width = THFloatTensor_size(grads,3);
+
 
     // n_elements
     const int image_channel_elements = image_height * image_width;

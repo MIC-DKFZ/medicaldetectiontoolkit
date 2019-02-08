@@ -17,6 +17,7 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle
 from multiprocessing import Pool
 import configs as cf
 
@@ -50,45 +51,57 @@ def multi_processing_create_image(inputs):
 
     out = np.concatenate((img[None], seg[None]))
     out_path = os.path.join(out_dir, '{}.npy'.format(six))
-    df = pd.read_pickle(os.path.join(out_dir, 'info_df.pickle'))
-    df.loc[len(df)] = [out_path, class_id, str(six)]
-    df.to_pickle(os.path.join(out_dir, 'info_df.pickle'))
     np.save(out_path, out)
 
+    with open(os.path.join(out_dir, 'meta_info_{}.pickle'.format(six)), 'wb') as handle:
+        pickle.dump([out_path, class_id, str(six)], handle)
 
-def get_toy_image_info(mode, n_images, out_dir, class_diameters=(20, 20)):
 
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+def generate_experiment(exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20)):
+
+    train_dir = os.path.join(cf.root_dir, exp_name, 'train')
+    test_dir = os.path.join(cf.root_dir, exp_name, 'test')
+    if not os.path.exists(train_dir):
+        os.makedirs(train_dir)
+    if not os.path.exists(test_dir):
+        os.makedirs(test_dir)
 
     # enforced distance between object center and image edge.
     foreground_margin = np.max(class_diameters) // 2
 
-    df = pd.DataFrame(columns=['path', 'class_id', 'pid'])
-    df.to_pickle(os.path.join(out_dir, 'info_df.pickle'))
-    return [[out_dir, six, foreground_margin, class_diameters, mode] for six in range(n_images)]
-
-
-if __name__ == '__main__':
-
-    cf = cf.configs()
-
-    root_dir = os.path.join(cf.root_dir, 'donuts_shape')
     info = []
-    info += get_toy_image_info(mode='donuts_shape', n_images=1500, out_dir=os.path.join(root_dir, 'train'))
-    info += get_toy_image_info(mode='donuts_shape', n_images=1000, out_dir=os.path.join(root_dir, 'test'))
-
-    root_dir = os.path.join(cf.root_dir, 'donuts_pattern')
-    info += get_toy_image_info(mode='donuts_pattern', n_images=1500, out_dir=os.path.join(root_dir, 'train'))
-    info += get_toy_image_info(mode='donuts_pattern', n_images=1000, out_dir=os.path.join(root_dir, 'test'))
-
-    root_dir = os.path.join(cf.root_dir, 'circles_scale')
-    info += get_toy_image_info(mode='circles_scale', n_images=1500, out_dir=os.path.join(root_dir, 'train'), class_diameters=(19, 20))
-    info += get_toy_image_info(mode='circles_scale', n_images=1000, out_dir=os.path.join(root_dir, 'test'), class_diameters=(19, 20))
+    info += [[train_dir, six, foreground_margin, class_diameters, mode] for six in range(n_train_images)]
+    info += [[test_dir, six, foreground_margin, class_diameters, mode] for six in range(n_test_images)]
 
     print('starting creating {} images'.format(len(info)))
     pool = Pool(processes=12)
     pool.map(multi_processing_create_image, info, chunksize=1)
     pool.close()
     pool.join()
+
+    aggregate_meta_info(train_dir)
+    aggregate_meta_info(test_dir)
+
+
+def aggregate_meta_info(exp_dir):
+
+    files = [os.path.join(exp_dir, f) for f in os.listdir(exp_dir) if 'meta_info' in f]
+    df = pd.DataFrame(columns=['path', 'class_id', 'pid'])
+    for f in files:
+        with open(f, 'rb') as handle:
+            df.loc[len(df)] = pickle.load(handle)
+
+    df.to_pickle(os.path.join(exp_dir, 'info_df.pickle'))
+    print ("aggregated meta info to df with length", len(df))
+
+
+if __name__ == '__main__':
+
+    cf = cf.configs()
+
+    generate_experiment('donuts_shape_threads', n_train_images=1500, n_test_images=1000, mode='donuts_shape')
+    generate_experiment('donuts_pattern', n_train_images=1500, n_test_images=1000, mode='donuts_pattern')
+    generate_experiment('circles_scale', n_train_images=1500, n_test_images=1000, mode='circles_scale', class_diameters=(19, 20))
+
+
 

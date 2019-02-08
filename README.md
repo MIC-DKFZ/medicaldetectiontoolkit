@@ -2,7 +2,7 @@
 <p align="center"><img src="assets/mdt_logo_2.png"  width=450></p><br>
 
 ## Overview
-This is a fully automated framework for object detection featuring:
+This is a comprehensive framework for object detection featuring:
 - 2D + 3D implementations of prevalent object detectors: e.g. Mask R-CNN [1], Retina Net [2], Retina U-Net [3]. 
 - Modular and light-weight structure ensuring sharing of all processing steps (incl. backbone architecture) for comparability of models.
 - training with bounding box and/or pixel-wise annotations.
@@ -37,12 +37,35 @@ cd ..
 git clone https://github.com/MIC-DKFZ/batchgenerators
 cd batchgenerators
 pip3 install -e .
-cd mdt
+cd ../medicaldetectiontoolkit
+```
+We use two cuda functions: Non-Maximum Suppression (taken from [pytorch-faster-rcnn](https://github.com/ruotianluo/pytorch-faster-rcnn) and added adaption for 3D) and RoiAlign (taken from [RoiAlign](https://github.com/longcw/RoIAlign.pytorch), fixed according to [this bug report](https://hackernoon.com/how-tensorflows-tf-image-resize-stole-60-days-of-my-life-aba5eb093f35), and added adaption for 3D). In this framework, they come pre-compile for TitanX. If you have a different GPU you need to re-compile these functions:
+
+
+| GPU | arch |
+| --- | --- |
+| TitanX | sm_52 |
+| GTX 960M | sm_50 |
+| GTX 1070 | sm_61 |
+| GTX 1080 (Ti) | sm_61 |
+  
+```
+cd cuda_functions/nms_xD/src/cuda/
+nvcc -c -o nms_kernel.cu.o nms_kernel.cu -x cu -Xcompiler -fPIC -arch=[arch]
+cd ../../
+python build.py
+cd ../
+
+cd cuda_functions/roi_align_xD/roi_align/src/cuda/
+nvcc -c -o crop_and_resize_kernel.cu.o crop_and_resize_kernel.cu -x cu -Xcompiler -fPIC -arch=[arch]
+cd ../../
+python build.py
+cd ../../
 ```
 
 ## Prepare the Data
 This framework is meant for you to be able to train models on your own data sets. 
-An example data loader is provided in medicaldetectiontoolkit/experiments including thorough documentation to ensure a quick start for your own project. 
+Two example data loaders are provided in medicaldetectiontoolkit/experiments including thorough documentation to ensure a quick start for your own project. The way I load Data is to have a preprocessing script, which after preprocessing saves the Data of whatever data type (in the case of LIDC, those are .nrrd files obtained from [this data conversion tool](https://github.com/MIC-DKFZ/LIDC-IDRI-processing/tree/v1.0.1)) into numpy arrays (this step is just done once). During training / testing, the data loader then loads these numpy arrays dynamically. (Please note the Data Input side is meant to be customized by you according to your own needs and the provided Data loaders are merely examples: LIDC has a powerful Dataloader that handles 2D/3D inputs and is optimized for patch-based training and inference. Toy-Experiments have a lightweight Dataloader, only handling 2D without patching. The latter makes sense if you want to get familiar with the framework.).
 
 ## Execute
 1. Set I/O paths, model and training specifics in the configs file: medicaldetectiontoolkit/experiments/your_experiment/configs.py
@@ -75,6 +98,11 @@ data augmentation, we feed the annotation masks through data augmentation (creat
 <p align="center"><img src="assets/annotations.png"  width=85%></p><br>
 
 
+The framework further handles two types of pixel-wise annotations: 
+
+1. A label map with individual ROIs identified by increasing label values, accompanied by a vector containing in each position the class target for the lesion with the corresponding label (for this mode set get_rois_from_seg_flag = False when calling ConvertSegToBoundingBoxCoordinates in your Data Loader).
+2. A binary label map. There is only one foreground class and single lesions are not identified. All lesions have the same class target (foreground). In this case the Dataloader runs a Connected Component Labelling algorithm to create processable lesion - class target pairs on the fly (for this mode set get_rois_from_seg_flag = True when calling ConvertSegToBoundingBoxCoordinates in your Data Loader). 
+
 ## Prediction pipeline
 This framework provides an inference module, which automatically handles patching of inputs, and tiling, ensembling, and weighted consolidation of output predictions:<br><br><br>
 <img src="assets/prediction_pipeline.png" ><br><br>
@@ -105,6 +133,7 @@ Please cite the original publication [3].
 
 ## License
 The code is published under the [Apache License Version 2.0](LICENSE).
+
 
 
 
