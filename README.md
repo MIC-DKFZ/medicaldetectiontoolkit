@@ -1,4 +1,7 @@
 
+
+
+[<img src="https://img.shields.io/badge/chat-slack%20channel-75BBC4.svg">](https://join.slack.com/t/mdtoolkit/shared_invite/enQtNTQ3MjY2MzE0MDg2LWNjY2I2Njc5MTY0NmM0ZWIxNmQwZDRhYzk2MDdhM2QxYjliYTcwYzhkNTAxYmRkMDA0MjcyNDMyYjllNTZhY2M)
 <p align="center"><img src="assets/mdt_logo_2.png"  width=450></p><br>
 
 ## Overview
@@ -65,7 +68,7 @@ cd ../../
 
 ## Prepare the Data
 This framework is meant for you to be able to train models on your own data sets. 
-Two example data loaders are provided in medicaldetectiontoolkit/experiments including thorough documentation to ensure a quick start for your own project. The way I load Data is to have a preprocessing script, which after preprocessing saves the Data of whatever data type (in the case of LIDC, those are .nrrd files obtained from [this data conversion tool](https://github.com/MIC-DKFZ/LIDC-IDRI-processing/tree/v1.0.1)) into numpy arrays (this step is just done once). During training / testing, the data loader then loads these numpy arrays dynamically. (Please note the Data Input side is meant to be customized by you according to your own needs and the provided Data loaders are merely examples: LIDC has a powerful Dataloader that handles 2D/3D inputs and is optimized for patch-based training and inference. Toy-Experiments have a lightweight Dataloader, only handling 2D without patching. The latter makes sense if you want to get familiar with the framework.).
+Two example data loaders are provided in medicaldetectiontoolkit/experiments including thorough documentation to ensure a quick start for your own project. The way I load Data is to have a preprocessing script, which after preprocessing saves the Data of whatever data type into numpy arrays (this is just run once). During training / testing, the data loader then loads these numpy arrays dynamically. (Please note the Data Input side is meant to be customized by you according to your own needs and the provided Data loaders are merely examples: LIDC has a powerful Dataloader that handles 2D/3D inputs and is optimized for patch-based training and inference. Toy-Experiments have a lightweight Dataloader, only handling 2D without patching. The latter makes sense if you want to get familiar with the framework.).
 
 ## Execute
 1. Set I/O paths, model and training specifics in the configs file: medicaldetectiontoolkit/experiments/your_experiment/configs.py
