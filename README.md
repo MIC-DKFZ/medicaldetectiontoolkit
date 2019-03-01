@@ -25,6 +25,9 @@ of Segmentation Supervision for Medical Object Detection" </a>, 2018
 [5] https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py<br/>
 [6] https://github.com/MIC-DKFZ/batchgenerators<br/><br>
 
+## How to cite this code
+Please cite the original publication [3].
+
 ## Installation
 Setup package in virtual environment
 ```
@@ -131,8 +134,6 @@ Input images + ground truth annotations + output predictions of a sampled valida
 Zoomed into the last two lines of the plot:<br><br><br>
 <img src="assets/output_monitoring_2.png"  width=700>
 
-## How to cite this code
-Please cite the original publication [3].
 
 ## License
 The code is published under the [Apache License Version 2.0](LICENSE).
