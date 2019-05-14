@@ -829,6 +829,13 @@ class net(nn.Module):
             raise Exception("Image size must be dividable by 2 at least 5 times "
                             "to avoid fractions when downscaling and upscaling."
                             "For example, use 256, 320, 384, 448, 512, ... etc. ")
+        if len(self.cf.patch_size) == 3:
+            d = self.cf.pach_size[2]
+            if d / 2**3 != int(d / 2**3):
+                raise Exception("Image z dimension must be dividable by 2 at least 3 times "
+                                "to avoid fractions when downscaling and upscaling."
+
+
 
         # instanciate abstract multi dimensional conv class and backbone class.
         conv = mutils.NDConvGenerator(self.cf.dim)

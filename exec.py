@@ -42,12 +42,13 @@ def train(logger):
     val_evaluator = Evaluator(cf, logger, mode=cf.val_mode)
 
     starting_epoch = 1
-    if cf.resume_to_checkpoint:
-        starting_epoch = utils.load_checkpoint(cf.resume_to_checkpoint, net, optimizer)
-        logger.info('resumed to checkpoint {} at epoch {}'.format(cf.resume_to_checkpoint, starting_epoch))
 
     # prepare monitoring
     monitor_metrics, TrainingPlot = utils.prepare_monitoring(cf)
+
+    if cf.resume_to_checkpoint:
+        starting_epoch, monitor_metrics = utils.load_checkpoint(cf.resume_to_checkpoint, net, optimizer)
+        logger.info('resumed to checkpoint {} at epoch {}'.format(cf.resume_to_checkpoint, starting_epoch))
 
     logger.info('loading dataset and initializing batch generators...')
     batch_gen = data_loader.get_train_generators(cf, logger)
@@ -192,7 +193,7 @@ if __name__ == '__main__':
         if cf.hold_out_test_set:
             cf.folds = args.folds
             predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
-            results_list = predictor.load_saved_predictions(apply_wbc=True)
+            results_list = predictor.load_saved_predictions(apply_wbc=True, save_preds_to_csv=cf.save_preds_to_csv)
             utils.create_csv_output(cf, logger, results_list)
 
         else:
@@ -202,7 +203,7 @@ if __name__ == '__main__':
                 cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
                 cf.fold = fold
                 predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
-                results_list = predictor.load_saved_predictions(apply_wbc=True)
+                results_list = predictor.load_saved_predictions(apply_wbc=True, save_preds_to_csv=cf.save_preds_to_csv)
                 logger.info('starting evaluation...')
                 evaluator = Evaluator(cf, logger, mode='test')
                 evaluator.evaluate_predictions(results_list)

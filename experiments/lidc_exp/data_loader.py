@@ -178,7 +178,7 @@ def create_data_gen_pipeline(patient_data, cf, is_training=True):
     # add transformations to pipeline.
     my_transforms = []
     if is_training:
-        mirror_transform = Mirror(axes=np.arange(2, cf.dim+2, 1))
+        mirror_transform = Mirror(axes=np.arange(cf.dim))
         my_transforms.append(mirror_transform)
         spatial_transform = SpatialTransform(patch_size=cf.patch_size[:cf.dim],
                                              patch_center_dist_from_border=cf.da_kwargs['rand_crop_dist'],
@@ -221,15 +221,19 @@ class BatchGenerator(SlimDataLoaderBase):
         batch_data, batch_segs, batch_pids, batch_targets, batch_patient_labels = [], [], [], [], []
         class_targets_list =  [v['class_target'] for (k, v) in self._data.items()]
 
-        #samples patients towards equilibrium of foreground classes on a roi-level (after randomly sampling the ratio "batch_sample_slack).
-        batch_ixs = dutils.get_class_balanced_patients(
-            class_targets_list, self.batch_size, self.cf.head_classes - 1, slack_factor=self.cf.batch_sample_slack)
+        if self.cf.head_classes > 2:
+            # samples patients towards equilibrium of foreground classes on a roi-level (after randomly sampling the ratio "batch_sample_slack).
+            batch_ixs = dutils.get_class_balanced_patients(
+                class_targets_list, self.batch_size, self.cf.head_classes - 1, slack_factor=self.cf.batch_sample_slack)
+        else:
+            batch_ixs = np.random.choice(len(class_targets_list), self.batch_size)
+
         patients = list(self._data.items())
 
         for b in batch_ixs:
             patient = patients[b][1]
 
-            data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))[np.newaxis]
+            data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))[np.newaxis] # (c, y, x, z)
             seg = np.transpose(np.load(patient['seg'], mmap_mode='r'), axes=(1, 2, 0))
             batch_pids.append(patient['pid'])
             batch_targets.append(patient['class_target'])
@@ -298,7 +302,7 @@ class BatchGenerator(SlimDataLoaderBase):
             batch_data.append(data)
             batch_segs.append(seg[np.newaxis])
 
-        data = np.array(batch_data).astype(np.float16)
+        data = np.array(batch_data)
         seg = np.array(batch_segs).astype(np.uint8)
         class_target = np.array(batch_targets)
         return {'data': data, 'seg': seg, 'pid': batch_pids, 'class_target': class_target}
@@ -328,19 +332,19 @@ class PatientBatchIterator(SlimDataLoaderBase):
 
         pid = self.dataset_pids[self.patient_ix]
         patient = self._data[pid]
-        data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))
+        data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))[np.newaxis] # (c, y, x, z)
         seg = np.transpose(np.load(patient['seg'], mmap_mode='r'), axes=(1, 2, 0))
         batch_class_targets = np.array([patient['class_target']])
 
         # pad data if smaller than patch_size seen during training.
-        if np.any([data.shape[dim] < ps for dim, ps in enumerate(self.patch_size)]):
-            new_shape = [np.max([data.shape[dim], self.patch_size[dim]]) for dim, ps in enumerate(self.patch_size)]
+        if np.any([data.shape[dim + 1] < ps for dim, ps in enumerate(self.patch_size)]):
+            new_shape = [data.shape[0]] + [np.max([data.shape[dim + 1], self.patch_size[dim]]) for dim, ps in enumerate(self.patch_size)]
             data = dutils.pad_nd_image(data, new_shape) # use 'return_slicer' to crop image back to original shape.
             seg = dutils.pad_nd_image(seg, new_shape)
 
         # get 3D targets for evaluation, even if network operates in 2D. 2D predictions will be merged to 3D in predictor.
         if self.cf.dim == 3 or self.cf.merge_2D_to_3D_preds:
-            out_data = data[np.newaxis, np.newaxis]
+            out_data = data[np.newaxis]
             out_seg = seg[np.newaxis, np.newaxis]
             out_targets = batch_class_targets
 
@@ -352,7 +356,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
                                   'original_img_shape': out_data.shape})
 
         if self.cf.dim == 2:
-            out_data = np.transpose(data, axes=(2, 0, 1))[:, np.newaxis]  # (z, c, x, y )
+            out_data = np.transpose(data, axes=(3, 0, 1, 2))  # (z, c, x, y )
             out_seg = np.transpose(seg, axes=(2, 0, 1))[:, np.newaxis]
             out_targets = np.array(np.repeat(batch_class_targets, out_data.shape[0], axis=0))
 
@@ -383,8 +387,8 @@ class PatientBatchIterator(SlimDataLoaderBase):
 
         # crop patient-volume to patches of patch_size used during training. stack patches up in batch dimension.
         # in this case, 2D is treated as a special case of 3D with patch_size[z] = 1.
-        if np.any([data.shape[dim] > self.patch_size[dim] for dim in range(3)]):
-            patch_crop_coords_list = dutils.get_patch_crop_coords(data, self.patch_size)
+        if np.any([data.shape[dim + 1] > self.patch_size[dim] for dim in range(3)]):
+            patch_crop_coords_list = dutils.get_patch_crop_coords(data[0], self.patch_size)
             new_img_batch, new_seg_batch, new_class_targets_batch = [], [], []
 
             for cix, c in enumerate(patch_crop_coords_list):
@@ -397,13 +401,13 @@ class PatientBatchIterator(SlimDataLoaderBase):
                 if self.cf.dim == 2 and self.cf.n_3D_context is not None:
                     tmp_c_5 = c[5] + (self.cf.n_3D_context * 2)
                     if cix == 0:
-                        data = np.pad(data, ((0, 0), (0, 0), (self.cf.n_3D_context, self.cf.n_3D_context)), 'constant', constant_values=0)
+                        data = np.pad(data, ((0, 0), (0, 0), (0, 0), (self.cf.n_3D_context, self.cf.n_3D_context)), 'constant', constant_values=0)
                 else:
                     tmp_c_5 = c[5]
 
                 new_img_batch.append(data[c[0]:c[1], c[2]:c[3], c[4]:tmp_c_5])
 
-            data = np.array(new_img_batch)[:, np.newaxis] # (n_patches, c, x, y, z)
+            data = np.array(new_img_batch) # (n_patches, c, x, y, z)
             seg = np.array(new_seg_batch)[:, np.newaxis]  # (n_patches, 1, x, y, z)
             batch_class_targets = np.repeat(batch_class_targets, len(patch_crop_coords_list), axis=0)
 

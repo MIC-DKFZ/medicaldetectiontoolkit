@@ -203,14 +203,14 @@ class BatchGenerator(SlimDataLoaderBase):
 
             patient = patients[b][1]
             all_data = np.load(patient['data'], mmap_mode='r')
-            data = all_data[0].astype('float16')
+            data = all_data[0]
             seg = all_data[1].astype('uint8')
             batch_pids.append(patient['pid'])
             batch_targets.append(patient['class_target'])
             batch_data.append(data[np.newaxis])
             batch_segs.append(seg[np.newaxis])
 
-        data = np.array(batch_data).astype(np.float16)
+        data = np.array(batch_data)
         seg = np.array(batch_segs).astype(np.uint8)
         class_target = np.array(batch_targets)
         return {'data': data, 'seg': seg, 'pid': batch_pids, 'class_target': class_target}
@@ -241,7 +241,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
         pid = self.dataset_pids[self.patient_ix]
         patient = self._data[pid]
         all_data = np.load(patient['data'], mmap_mode='r')
-        data = all_data[0].astype('float16')
+        data = all_data[0]
         seg = all_data[1].astype('uint8')
         batch_class_targets = np.array([patient['class_target']])
 

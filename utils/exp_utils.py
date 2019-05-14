@@ -24,6 +24,7 @@ import plotting
 import sys
 import importlib.util
 import pandas as pd
+import pickle
 
 
 
@@ -150,7 +151,6 @@ class ModelSelector:
 
         # take the mean over all selection criteria in each epoch
         non_nan_scores = np.mean(np.array([[0 if ii is None else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
-        print('non none scores:', non_nan_scores)
         epochs_scores = [ii for ii in non_nan_scores[1:]]
         # ranking of epochs according to model_selection_criterion
         epoch_ranking = np.argsort(epochs_scores)[::-1] + 1 #epochs start at 1
@@ -159,15 +159,24 @@ class ModelSelector:
 
         # check if current epoch is among the top-k epchs.
         if epoch in epoch_ranking[:self.cf.save_n_models]:
-            torch.save(net.state_dict(), os.path.join(self.cf.fold_dir, '{}_best_params.pth'.format(epoch)))
+
+            save_dir = os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(epoch))
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
+
+            torch.save(net.state_dict(), os.path.join(save_dir, 'params.pth'))
+            with open(os.path.join(save_dir, 'monitor_metrics.pickle'), 'wb') as handle:
+                pickle.dump(monitor_metrics, handle)
             # save epoch_ranking to keep info for inference.
             np.save(os.path.join(self.cf.fold_dir, 'epoch_ranking'), epoch_ranking[:self.cf.save_n_models])
+            np.save(os.path.join(save_dir, 'epoch_ranking'), epoch_ranking[:self.cf.save_n_models])
+
             self.logger.info(
                 "saving current epoch {} at rank {}".format(epoch, np.argwhere(epoch_ranking == epoch)))
             # delete params of the epoch that just fell out of the top-k epochs.
-            for se in [int(ii.split('_')[0]) for ii in os.listdir(self.cf.fold_dir) if 'best_params' in ii]:
+            for se in [int(ii.split('_')[0]) for ii in os.listdir(self.cf.fold_dir) if 'best_checkpoint' in ii]:
                 if se in epoch_ranking[self.cf.save_n_models:]:
-                    subprocess.call('rm {}'.format(os.path.join(self.cf.fold_dir, '{}_best_params.pth'.format(se))), shell=True)
+                    subprocess.call('rm -rf {}'.format(os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(se))), shell=True)
                     self.logger.info('deleting epoch {} at rank {}'.format(se, np.argwhere(epoch_ranking == se)))
 
         state = {
@@ -176,16 +185,26 @@ class ModelSelector:
             'optimizer': optimizer.state_dict(),
         }
 
-        torch.save(state, os.path.join(self.cf.fold_dir, 'last_state.pth'))
+        # save checkpoint of current epoch.
+        save_dir = os.path.join(self.cf.fold_dir, 'last_checkpoint'.format(epoch))
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+        torch.save(state, os.path.join(save_dir, 'params.pth'))
+        np.save(os.path.join(save_dir, 'epoch_ranking'), epoch_ranking[:self.cf.save_n_models])
+        with open(os.path.join(save_dir, 'monitor_metrics.pickle'), 'wb') as handle:
+            pickle.dump(monitor_metrics, handle)
 
 
 
 def load_checkpoint(checkpoint_path, net, optimizer):
 
-    checkpoint = torch.load(checkpoint_path)
-    net.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    return checkpoint['epoch']
+    checkpoint_params = torch.load(os.path.join(checkpoint_path, 'params.pth'))
+    net.load_state_dict(checkpoint_params['state_dict'])
+    optimizer.load_state_dict(checkpoint_params['optimizer'])
+    with open(os.path.join(checkpoint_path, 'monitor_metrics.pickle'), 'rb') as handle:
+        monitor_metrics = pickle.load(handle)
+    starting_epoch = checkpoint_params['epoch'] + 1
+    return starting_epoch, monitor_metrics
 
 
 
@@ -219,38 +238,46 @@ def prepare_monitoring(cf):
 
 
 
-def create_csv_output(cf, logger, results_list):
+def create_results_csv(results_list, cf, logger):
     """
-    Write out test set predictions to .csv file. output format is one line per patient:
-    PatientID score pred_class x y w h score pred_class x y w h .....
+    Write out test set predictions to .csv file. output format is one line per prediction:
+    PatientID | PredictionID | [y1 x1 y2 x2 (z1) (z2)] | score | pred_classID
+    Note, that prediction coordinates correspond to images as loaded for training/testing and need to be adapted when
+    plotted over raw data (before preprocessing/resampling).
     :param results_list: [[patient_results, patient_id], [patient_results, patient_id], ...]
     """
-    logger.info('creating csv output file at {}'.format(os.path.join(cf.exp_dir, 'output.csv')))
-    submission_df = pd.DataFrame(columns=['patientID', 'PredictionString'])
+
+    logger.info('creating csv output file at {}'.format(os.path.join(cf.exp_dir, 'results.csv')))
+    predictions_df = pd.DataFrame(columns = ['patientID', 'predictionID', 'coords', 'score', 'pred_classID'])
     for r in results_list:
+
         pid = r[1]
-        prediction_string = ''
-        for box in r[0][0]:
+
+        #optionally load resampling info from preprocessing to match output predictions with raw data.
+        #with open(os.path.join(cf.exp_dir, 'test_resampling_info', pid), 'rb') as handle:
+        #    resampling_info = pickle.load(handle)
+
+        for bix, box in enumerate(r[0][0]):
+            assert box['box_type'] == 'det', box['box_type']
             coords = box['box_coords']
             score = box['box_score']
-            pred_class = box['box_pred_class_id']
-
+            pred_class_id = box['box_pred_class_id']
+            out_coords = []
             if score >= cf.min_det_thresh:
-                x = coords[1] #* cf.pp_downsample_factor
-                y = coords[0] #* cf.pp_downsample_factor
-                width = (coords[3] - coords[1]) #* cf.pp_downsample_factor
-                height = (coords[2] - coords[0]) #* cf.pp_downsample_factor
-                if len(coords) == 6:
-                    z = coords[4]
-                    depth = (coords[5] - coords[4])
-                    prediction_string += '{} {} {} {} {} {} {} {}'.format(score, pred_class, x, y, z, width, height, depth)
-                else:
-                    prediction_string += '{} {} {} {} {} {} '.format(score, pred_class, x, y, width, height)
+                out_coords.append(coords[0]) #* resampling_info['scale'][0])
+                out_coords.append(coords[1]) #* resampling_info['scale'][1])
+                out_coords.append(coords[2]) #* resampling_info['scale'][0])
+                out_coords.append(coords[3]) #* resampling_info['scale'][1])
+                if len(coords) > 4:
+                    out_coords.append(coords[4]) #* resampling_info['scale'][2] + resampling_info['z_crop'])
+                    out_coords.append(coords[5]) #* resampling_info['scale'][2] + resampling_info['z_crop'])
 
-        if prediction_string == '':
-            prediction_string = None
-        submission_df.loc[len(submission_df)] = [pid, prediction_string]
-    submission_df.to_csv(os.path.join(cf.exp_dir, 'output.csv'), index=False)
+                predictions_df.loc[len(predictions_df)] = [pid, bix, out_coords, score, pred_class_id]
+    try:
+        fold = cf.fold
+    except:
+        fold = 'hold_out'
+    predictions_df.to_csv(os.path.join(cf.exp_dir, 'results_{}.csv'.format(fold)), index=False)
 
 
 

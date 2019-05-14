@@ -114,6 +114,9 @@ class DefaultConfigs:
         # dict to assign specific plot_values to monitor_figures > 0. {1: ['class_loss'], 2: ['kl_loss', 'kl_sigmas']}
         self.assign_values_to_extra_figure = {}
 
+        # save predictions to csv file in experiment dir.
+        self.save_preds_to_csv = True
+
         #########################
         #   MRCNN               #
         #########################

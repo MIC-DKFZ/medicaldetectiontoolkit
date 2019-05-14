@@ -134,7 +134,8 @@ class Predictor:
         dict_of_patient_results = OrderedDict()
 
         # get paths of all parameter sets to be loaded for temporal ensembling. (or just one for no temp. ensembling).
-        weight_paths = [os.path.join(self.cf.fold_dir, '{}_best_params.pth'.format(epoch)) for epoch in self.epoch_ranking]
+        weight_paths = [os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(epoch), 'params.pth') for epoch in
+                        self.epoch_ranking]
 
         for rank_ix, weight_path in enumerate(weight_paths):
 
@@ -421,7 +422,9 @@ class Predictor:
                     # Also the info 'box_n_overlaps' is stored for consolidation, which depicts the amount over
                     # overlapping patches at the box's position.
                     c = box['box_coords']
-                    box_centers = np.array([(c[ii+2] - c[ii])/2 for ii in range(len(c)//2)])
+                    box_centers = [(c[ii] + c[ii + 2]) / 2 for ii in range(2)]
+                    if self.cf.dim == 3:
+                        box_centers.append((c[4] + c[5]) / 2)
                     box['box_patch_center_factor'] = np.mean(
                         [norm.pdf(bc, loc=pc, scale=pc * 0.8) * np.sqrt(2 * np.pi) * pc * 0.8 for bc, pc in
                          zip(box_centers, np.array(self.cf.patch_size) / 2)])
