@@ -125,7 +125,7 @@ class BBRegressor(nn.Module):
 
 def compute_class_loss(anchor_matches, class_pred_logits, shem_poolsize=20):
     """
-    :param anchor_matches: (n_anchors). [-1, 0, 1] for negative, neutral, and positive matched anchors.
+    :param anchor_matches: (n_anchors). [-1, 0, class_id] for negative, neutral, and positive matched anchors.
     :param class_pred_logits: (n_anchors, n_classes). logits from classifier sub-network.
     :param shem_poolsize: int. factor of top-k candidates to draw from per negative sample (online-hard-example-mining).
     :return: loss: torch tensor.
@@ -169,12 +169,12 @@ def compute_bbox_loss(target_deltas, pred_deltas, anchor_matches):
     :param target_deltas:   (b, n_positive_anchors, (dy, dx, (dz), log(dh), log(dw), (log(dd)))).
     Uses 0 padding to fill in unsed bbox deltas.
     :param pred_deltas: predicted deltas from bbox regression head. (b, n_anchors, (dy, dx, (dz), log(dh), log(dw), (log(dd))))
-    :param anchor_matches: (n_anchors). [-1, 0, 1] for negative, neutral, and positive matched anchors.
+    :param anchor_matches: (n_anchors). [-1, 0, class_id] for negative, neutral, and positive matched anchors.
     :return: loss: torch 1D tensor.
     """
-    if 0 not in torch.nonzero(anchor_matches == 1).size():
+    if 0 not in torch.nonzero(anchor_matches > 0).size():
 
-        indices = torch.nonzero(anchor_matches == 1).squeeze(1)
+        indices = torch.nonzero(anchor_matches > 0).squeeze(1)
         # Pick bbox deltas that contribute to the loss
         pred_deltas = pred_deltas[indices]
         # Trim target bounding box deltas to the same length as pred_deltas.

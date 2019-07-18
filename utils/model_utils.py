@@ -513,7 +513,9 @@ def gt_anchor_matching(cf, anchors, gt_boxes, gt_class_ids=None):
 
     Returns:
     anchor_class_matches: [N] (int32) matches between anchors and GT boxes.
-               1 = positive anchor, -1 = negative anchor, 0 = neutral
+               1 = positive anchor, -1 = negative anchor, 0 = neutral.
+               In case of one stage detectors like RetinaNet/RetinaUNet this flag takes
+               class_ids as positive anchor values, i.e. values >= 1!
     anchor_delta_targets: [N, (dy, dx, (dz), log(dh), log(dw), (log(dd)))] Anchor bbox deltas.
     """
 
