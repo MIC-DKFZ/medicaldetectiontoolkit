@@ -405,7 +405,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
                 else:
                     tmp_c_5 = c[5]
 
-                new_img_batch.append(data[c[0]:c[1], c[2]:c[3], c[4]:tmp_c_5])
+                new_img_batch.append(data[:, c[0]:c[1], c[2]:c[3], c[4]:tmp_c_5])
 
             data = np.array(new_img_batch) # (n_patches, c, x, y, z)
             seg = np.array(new_seg_batch)[:, np.newaxis]  # (n_patches, 1, x, y, z)
