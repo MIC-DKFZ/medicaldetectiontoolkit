@@ -238,7 +238,7 @@ def prepare_monitoring(cf):
 
 
 
-def create_results_csv(results_list, cf, logger):
+def create_csv_output(results_list, cf, logger):
     """
     Write out test set predictions to .csv file. output format is one line per prediction:
     PatientID | PredictionID | [y1 x1 y2 x2 (z1) (z2)] | score | pred_classID

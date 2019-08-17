@@ -193,8 +193,8 @@ if __name__ == '__main__':
         if cf.hold_out_test_set:
             cf.folds = args.folds
             predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
-            results_list = predictor.load_saved_predictions(apply_wbc=True, save_preds_to_csv=cf.save_preds_to_csv)
-            utils.create_csv_output(cf, logger, results_list)
+            results_list = predictor.load_saved_predictions(apply_wbc=True)
+            utils.create_csv_output(results_list, cf, logger)
 
         else:
             if folds is None:
@@ -203,7 +203,7 @@ if __name__ == '__main__':
                 cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
                 cf.fold = fold
                 predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
-                results_list = predictor.load_saved_predictions(apply_wbc=True, save_preds_to_csv=cf.save_preds_to_csv)
+                results_list = predictor.load_saved_predictions(apply_wbc=True)
                 logger.info('starting evaluation...')
                 evaluator = Evaluator(cf, logger, mode='test')
                 evaluator.evaluate_predictions(results_list)
