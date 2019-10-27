@@ -1,7 +1,7 @@
 
 
 
-[<img src="https://img.shields.io/badge/chat-slack%20channel-75BBC4.svg">](https://join.slack.com/t/mdtoolkit/shared_invite/enQtNTQ3MjY2MzE0MDg2LWNjY2I2Njc5MTY0NmM0ZWIxNmQwZDRhYzk2MDdhM2QxYjliYTcwYzhkNTAxYmRkMDA0MjcyNDMyYjllNTZhY2M)
+[<img src="https://img.shields.io/badge/chat-slack%20channel-75BBC4.svg">](https://join.slack.com/t/mdtoolkit/shared_invite/enQtNTQ3MjY2MzE0MDg2LTQ3NmFhN2UyZTI4NmE1MTNjNGJhZWVhZjViOWVhMmIwOWM5YTk0OWVjNGU0Mzg3YmU0Njc2MmRiN2I1NTljMzk)
 <p align="center"><img src="assets/mdt_logo_2.png"  width=450></p><br>
 
 ## Overview
