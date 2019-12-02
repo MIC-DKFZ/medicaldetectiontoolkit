@@ -136,7 +136,7 @@ Zoomed into the last two lines of the plot:<br><br><br>
 
 
 ## License
-Thia framework is published under the [Apache License Version 2.0](LICENSE).
+This framework is published under the [Apache License Version 2.0](LICENSE).
 
 
 
