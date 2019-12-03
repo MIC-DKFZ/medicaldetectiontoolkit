@@ -1,0 +1,9 @@
+*.pickle
+*.ipynb_checkpoints*
+*.pyc
+*.pkl
+*.log
+*.png
+*.jpg
+__pycache__/
+*.idea/**
