@@ -29,7 +29,7 @@ of Segmentation Supervision for Medical Object Detection" </a>, 2018
 Please cite the original publication [3].
 
 ## Installation
-Setup package in virtual environment
+Setup package in a virtual environment:
 ```
 git clone https://github.com/pfjaeger/medicaldetectiontoolkit.git .
 cd medicaldetectiontoolkit
@@ -37,14 +37,7 @@ virtualenv -p python3 venv
 source venv/bin/activate
 pip3 install -e .
 ```
-Install MIC-DKFZ batch-generators
-```
-cd ..
-git clone https://github.com/MIC-DKFZ/batchgenerators
-cd batchgenerators
-pip3 install -e .
-cd ../medicaldetectiontoolkit
-```
+
 We use two cuda functions: Non-Maximum Suppression (taken from [pytorch-faster-rcnn](https://github.com/ruotianluo/pytorch-faster-rcnn) and added adaption for 3D) and RoiAlign (taken from [RoiAlign](https://github.com/longcw/RoIAlign.pytorch), fixed according to [this bug report](https://hackernoon.com/how-tensorflows-tf-image-resize-stole-60-days-of-my-life-aba5eb093f35), and added adaption for 3D). In this framework, they come pre-compile for TitanX. If you have a different GPU you need to re-compile these functions:
 
 

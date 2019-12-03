@@ -25,8 +25,8 @@ def parse_requirements(filename):
 
 install_reqs = parse_requirements(req_file)
 
-setup(name='model',
-      version='latest',
+setup(name='medicaldetectiontoolkit',
+      version='0.0.1',
       packages=find_packages(exclude=['test', 'test.*']),
       install_requires=install_reqs,
       dependency_links=[],
