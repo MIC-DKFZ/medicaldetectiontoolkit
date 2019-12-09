@@ -7,7 +7,6 @@ imageio==2.6.1
 kiwisolver==1.1.0
 linecache2==1.0.0
 matplotlib==3.1.2
--e git+ssh://git@phabricator.mitk.org:2222/source/mdt-public.git@264bff9060495d4c94051398a9580e95ba7fda7e#egg=model
 networkx==2.4
 numpy==1.15.3
 pandas==0.23.4
