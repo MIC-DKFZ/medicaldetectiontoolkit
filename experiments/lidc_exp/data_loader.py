@@ -77,7 +77,7 @@ def get_train_generators(cf, logger):
     batch_gen['val_sampling'] = create_data_gen_pipeline(val_data, cf=cf, is_training=False)
     if cf.val_mode == 'val_patient':
         batch_gen['val_patient'] = PatientBatchIterator(val_data, cf=cf)
-        batch_gen['n_val'] = len(val_ix) if cf.max_val_patients is None else cf.max_val_patients
+        batch_gen['n_val'] = len(val_ix) if cf.max_val_patients is None else min(len(val_ix), cf.max_val_patients)
     else:
         batch_gen['n_val'] = cf.num_val_batches
 
@@ -91,24 +91,26 @@ def get_test_generator(cf, logger):
     If cf.hold_out_test_set is True, gets the data from an external folder instead.
     """
     if cf.hold_out_test_set:
-        cf.pp_data_path = cf.pp_test_data_path
+        pp_name = cf.pp_test_name
         test_ix = None
     else:
+        pp_name = None
         with open(os.path.join(cf.exp_dir, 'fold_ids.pickle'), 'rb') as handle:
             fold_list = pickle.load(handle)
         _, _, test_ix, _ = fold_list[cf.fold]
         # warnings.warn('WARNING: using validation set for testing!!!')
 
-    test_data = load_dataset(cf, logger, test_ix)
+    test_data = load_dataset(cf, logger, test_ix, pp_data_path=cf.pp_test_data_path, pp_name=pp_name)
     logger.info("data set loaded with: {} test patients".format(len(test_ix)))
     batch_gen = {}
     batch_gen['test'] = PatientBatchIterator(test_data, cf=cf)
-    batch_gen['n_test'] = len(test_ix)
+    batch_gen['n_test'] = len(test_ix) if cf.max_test_patients=="all" else \
+        min(cf.max_test_patients, len(test_ix))
     return batch_gen
 
 
 
-def load_dataset(cf, logger, subset_ixs=None):
+def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
     """
     loads the dataset. if deployed in cloud also copies and unpacks the data to the working directory.
     :param subset_ixs: subset indices to be loaded from the dataset. used e.g. for testing to only load the test folds.
@@ -116,11 +118,15 @@ def load_dataset(cf, logger, subset_ixs=None):
     individual images for training) each entry is a dictionary containing respective meta-info as well as paths to the preprocessed
     numpy arrays to be loaded during batch-generation
     """
+    if pp_data_path is None:
+        pp_data_path = cf.pp_data_path
+    if pp_name is None:
+        pp_name = cf.pp_name
     if cf.server_env:
         copy_data = True
-        target_dir = os.path.join('/ssd', cf.slurm_job_id, cf.pp_name, cf.crop_name)
+        target_dir = os.path.join('/ssd', cf.slurm_job_id, pp_name, cf.crop_name)
         if not os.path.exists(target_dir):
-            cf.data_source_dir = cf.pp_data_path
+            cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
             subprocess.call('rsync -av {} {}'.format(
                 os.path.join(cf.data_source_dir, cf.input_df_name), os.path.join(target_dir, cf.input_df_name)), shell=True)
@@ -129,10 +135,10 @@ def load_dataset(cf, logger, subset_ixs=None):
         elif subset_ixs is None:
             copy_data = False
 
-        cf.pp_data_path = target_dir
+        pp_data_path = target_dir
 
 
-    p_df = pd.read_pickle(os.path.join(cf.pp_data_path, cf.input_df_name))
+    p_df = pd.read_pickle(os.path.join(pp_data_path, cf.input_df_name))
 
     if cf.select_prototype_subset is not None:
         prototype_pids = p_df.pid.tolist()[:cf.select_prototype_subset]
@@ -150,8 +156,8 @@ def load_dataset(cf, logger, subset_ixs=None):
 
     class_targets = p_df['class_target'].tolist()
     pids = p_df.pid.tolist()
-    imgs = [os.path.join(cf.pp_data_path, '{}_img.npy'.format(pid)) for pid in pids]
-    segs = [os.path.join(cf.pp_data_path,'{}_rois.npy'.format(pid)) for pid in pids]
+    imgs = [os.path.join(pp_data_path, '{}_img.npy'.format(pid)) for pid in pids]
+    segs = [os.path.join(pp_data_path,'{}_rois.npy'.format(pid)) for pid in pids]
 
     data = OrderedDict()
     for ix, pid in enumerate(pids):

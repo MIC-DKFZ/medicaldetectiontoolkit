@@ -28,7 +28,7 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/path/to/data'
+        self.root_dir = '/mnt/HDD2TB/Documents/data/mdt_toy'
 
         #########################
         #         I/O           #
