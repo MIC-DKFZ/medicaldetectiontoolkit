@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
-        self.model = 'ufrcnn'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -342,4 +342,3 @@ class configs(DefaultConfigs):
 
             if self.model == 'retina_unet':
                 self.operate_stride1 = True
-                self.class_specific_seg_flag = True

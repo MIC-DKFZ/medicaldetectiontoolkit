@@ -285,3 +285,21 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
     logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
+if __name__=="__main__":
+    import utils.exp_utils as utils
+    from .configs import Configs
+
+    total_stime = time.time()
+
+
+    cf = Configs()
+    logger = utils.get_logger(0)
+    batch_gen = get_train_generators(cf, logger)
+
+    train_batch = next(batch_gen["train"])
+
+
+    mins, secs = divmod((time.time() - total_stime), 60)
+    h, mins = divmod(mins, 60)
+    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    print("{} total runtime: {}".format(os.path.split(__file__)[1], t))
