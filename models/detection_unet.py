@@ -131,7 +131,7 @@ class net(nn.Module):
 
         results_dict['seg_preds'] = np.argmax(F.softmax(seg_logits, 1).cpu().data.numpy(), 1)[:, np.newaxis]
         results_dict['torch_loss'] = loss
-        results_dict['monitor_extra_values'] = {'loss': loss.item()}
+        results_dict['monitor_values'] = {'loss': loss.item()}
         results_dict['logger_string'] = "loss: {0:.2f}".format(loss.item())
 
 
