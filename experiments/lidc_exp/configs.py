@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
 
 
         # one out of [2, 3]. dimension the model operates in.
-        self.dim = 3
+        self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
         self.model = 'retina_unet'
@@ -332,4 +332,3 @@ class configs(DefaultConfigs):
 
             if self.model == 'retina_unet':
                 self.operate_stride1 = True
-

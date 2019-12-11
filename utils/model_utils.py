@@ -830,29 +830,29 @@ def sum_tensor(input, axes, keepdim=False):
 
 
 
-def batch_dice(pred, y, false_positive_weight=1.0, eps=1e-6):
+def batch_dice(pred, y, false_positive_weight=1.0, smooth=1e-6):
     '''
-    compute soft dice over batch. this is a diffrentiable score and can be used as a loss function.
+    compute soft dice over batch. this is a differentiable score and can be used as a loss function.
     only dice scores of foreground classes are returned, since training typically
     does not benefit from explicit background optimization. Pixels of the entire batch are considered a pseudo-volume to compute dice scores of.
     This way, single patches with missing foreground classes can not produce faulty gradients.
-    :param pred: (b, c, y, x, (z)), softmax probabilities (network output).
-    :param y: (b, c, y, x, (z)), one hote encoded segmentation mask.
+    :param pred: (b, c, y, x, (z)), softmax probabilities (network output). (c==classes)
+    :param y: (b, c, y, x, (z)), one-hot-encoded segmentation mask.
     :param false_positive_weight: float [0,1]. For weighting of imbalanced classes,
     reduces the penalty for false-positive pixels. Can be beneficial sometimes in data with heavy fg/bg imbalances.
-    :return: soft dice score (float).This function discards the background score and returns the mena of foreground scores.
+    :return: soft dice score (float). This function discards the background score and returns the mean of foreground scores.
     '''
     if len(pred.size()) == 4:
         axes = (0, 2, 3)
         intersect = sum_tensor(pred * y, axes, keepdim=False)
         denom = sum_tensor(false_positive_weight*pred + y, axes, keepdim=False)
-        return torch.mean((2 * intersect / (denom + eps))[1:]) #only fg dice here.
+        return torch.mean(( (2 * intersect + smooth) / (denom + smooth) )[1:]) # only fg dice here.
 
-    if len(pred.size()) == 5:
+    elif len(pred.size()) == 5:
         axes = (0, 2, 3, 4)
         intersect = sum_tensor(pred * y, axes, keepdim=False)
         denom = sum_tensor(false_positive_weight*pred + y, axes, keepdim=False)
-        return torch.mean((2 * intersect / (denom + eps))[1:]) #only fg dice here.
+        return torch.mean(( (2*intersect + smooth) / (denom + smooth) )[1:]) # only fg dice here.
 
     else:
         raise ValueError('wrong input dimension in dice loss')
@@ -860,7 +860,7 @@ def batch_dice(pred, y, false_positive_weight=1.0, eps=1e-6):
 
 
 
-def batch_dice_mask(pred, y, mask, false_positive_weight=1.0, eps=1e-6):
+def batch_dice_mask(pred, y, mask, false_positive_weight=1.0, smooth=1e-6):
     '''
     compute soft dice over batch. this is a diffrentiable score and can be used as a loss function.
     only dice scores of foreground classes are returned, since training typically
@@ -870,7 +870,7 @@ def batch_dice_mask(pred, y, mask, false_positive_weight=1.0, eps=1e-6):
     :param y: (b, c, y, x, (z)), one hote encoded segmentation mask.
     :param false_positive_weight: float [0,1]. For weighting of imbalanced classes,
     reduces the penalty for false-positive pixels. Can be beneficial sometimes in data with heavy fg/bg imbalances.
-    :return: soft dice score (float).This function discards the background score and returns the mena of foreground scores.
+    :return: soft dice score (float). This function discards the background score and returns the mean of foreground scores.
     '''
 
     mask = mask.unsqueeze(1).repeat(1, 2, 1, 1)
@@ -879,13 +879,13 @@ def batch_dice_mask(pred, y, mask, false_positive_weight=1.0, eps=1e-6):
         axes = (0, 2, 3)
         intersect = sum_tensor(pred * y * mask, axes, keepdim=False)
         denom = sum_tensor(false_positive_weight*pred * mask + y * mask, axes, keepdim=False)
-        return torch.mean((2 * intersect / (denom + eps))[1:]) #only fg dice here.
+        return torch.mean(( (2*intersect + smooth) / (denom + smooth))[1:]) # only fg dice here.
 
-    if len(pred.size()) == 5:
+    elif len(pred.size()) == 5:
         axes = (0, 2, 3, 4)
         intersect = sum_tensor(pred * y, axes, keepdim=False)
         denom = sum_tensor(false_positive_weight*pred + y, axes, keepdim=False)
-        return torch.mean((2 * intersect / (denom + eps))[1:]) #only fg dice here.
+        return torch.mean(( (2*intersect + smooth) / (denom + smooth) )[1:]) # only fg dice here.
 
     else:
         raise ValueError('wrong input dimension in dice loss')

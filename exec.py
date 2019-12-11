@@ -178,9 +178,17 @@ if __name__ == '__main__':
             if args.mode == 'train_test':
                 test(logger)
 
+            for hdlr in logger.handlers:
+                hdlr.close()
+            logger.handlers = []
+
     elif args.mode == 'test':
 
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, is_training=False, use_stored_settings=True)
+        if args.dev:
+            folds = [0,1]
+            cf.test_n_epochs =  1; cf.max_test_patients = 1
+            
         cf.slurm_job_id = args.slurm_job_id
         model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
@@ -192,6 +200,10 @@ if __name__ == '__main__':
             logger = utils.get_logger(cf.fold_dir)
             cf.fold = fold
             test(logger)
+
+            for hdlr in logger.handlers:
+                hdlr.close()
+            logger.handlers = []
 
     # load raw predictions saved by predictor during testing, run aggregation algorithms and evaluation.
     elif args.mode == 'analysis':
