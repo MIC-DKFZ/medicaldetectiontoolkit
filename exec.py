@@ -172,7 +172,7 @@ if __name__ == '__main__':
             cf.resume_to_checkpoint = resume_to_checkpoint
             if not os.path.exists(cf.fold_dir):
                 os.mkdir(cf.fold_dir)
-                
+            logger = utils.get_logger(cf.fold_dir)
             train(logger)
             cf.resume_to_checkpoint = None
             if args.mode == 'train_test':
