@@ -35,7 +35,7 @@ Setup package in a virtual environment:
 ```
 git clone https://github.com/pfjaeger/medicaldetectiontoolkit.git .
 cd medicaldetectiontoolkit
-virtualenv -p python3 venv
+virtualenv -p python3.6 venv
 source venv/bin/activate
 pip3 install -e .
 ```
