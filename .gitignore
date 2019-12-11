@@ -6,4 +6,4 @@
 *.png
 *.jpg
 __pycache__/
-*.idea/**
+.idea/**
