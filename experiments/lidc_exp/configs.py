@@ -42,7 +42,7 @@ class configs(DefaultConfigs):
         self.dim = 3
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
-        self.model = 'mrcnn'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -50,9 +50,9 @@ class configs(DefaultConfigs):
         self.select_prototype_subset = None
 
         # path to preprocessed data.
-        self.pp_name = 'pp_norm'
+        self.pp_name = 'lidc_preprocessed_for_G2'
         self.input_df_name = 'info_df.pickle'
-        self.pp_data_path = '/path/to/preprocessed/data/{}'.format(self.pp_name)
+        self.pp_data_path = '/mnt/HDD2TB/Documents/data/lidc/{}'.format(self.pp_name)
         self.pp_test_data_path = self.pp_data_path #change if test_data in separate folder.
 
         # settings for deployment in cloud.

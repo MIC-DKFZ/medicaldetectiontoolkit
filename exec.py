@@ -127,9 +127,9 @@ def test(logger):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str,  default='train_test',
+    parser.add_argument('-m', '--mode', type=str,  default='train_test',
                         help='one out of: train / test / train_test / analysis / create_exp')
-    parser.add_argument('--folds', nargs='+', type=int, default=None,
+    parser.add_argument('-f','--folds', nargs='+', type=int, default=None,
                         help='None runs over all folds in CV. otherwise specify list of folds.')
     parser.add_argument('--exp_dir', type=str, default='/path/to/experiment/directory',
                         help='path to experiment dir. will be created if non existent.')
@@ -144,6 +144,7 @@ if __name__ == '__main__':
                         help='if resuming to checkpoint, the desired fold still needs to be parsed via --folds.')
     parser.add_argument('--exp_source', type=str, default='experiments/toy_exp',
                         help='specifies, from which source experiment to load configs and data_loader.')
+    parser.add_argument('-d', '--dev', default=False, action='store_true', help="development mode: shorten everything")
 
     args = parser.parse_args()
     folds = args.folds
@@ -152,6 +153,13 @@ if __name__ == '__main__':
     if args.mode == 'train' or args.mode == 'train_test':
 
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, args.use_stored_settings)
+        if args.dev:
+            folds = [0,1]
+            cf.batch_size, cf.num_epochs, cf.min_save_thresh, cf.save_n_models = 3 if cf.dim==2 else 1, 1, 0, 1
+            cf.num_train_batches, cf.num_val_batches, cf.max_val_patients = 5, 1, 1
+            cf.test_n_epochs =  cf.save_n_models
+            cf.max_test_patients = 1
+
         cf.slurm_job_id = args.slurm_job_id
         model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
@@ -210,7 +218,7 @@ if __name__ == '__main__':
                 evaluator.score_test_df()
 
     # create experiment folder and copy scripts without starting job.
-    # usefull for cloud deployment where configs might change before job actually runs.
+    # useful for cloud deployment where configs might change before job actually runs.
     elif args.mode == 'create_exp':
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, use_stored_settings=True)
         logger = utils.get_logger(cf.exp_dir)
