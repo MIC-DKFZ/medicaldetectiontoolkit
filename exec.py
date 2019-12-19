@@ -188,7 +188,7 @@ if __name__ == '__main__':
         if args.dev:
             folds = [0,1]
             cf.test_n_epochs =  1; cf.max_test_patients = 1
-            
+
         cf.slurm_job_id = args.slurm_job_id
         model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
