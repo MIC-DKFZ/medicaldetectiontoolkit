@@ -647,7 +647,7 @@ def unique1d(tensor):
         return tensor
     tensor = tensor.sort()[0]
     unique_bool = tensor[1:] != tensor [:-1]
-    first_element = Variable(torch.ByteTensor([True]), requires_grad=False)
+    first_element = torch.tensor([True], dtype=torch.bool, requires_grad=False)
     if tensor.is_cuda:
         first_element = first_element.cuda()
     unique_bool = torch.cat((first_element, unique_bool),dim=0)
