@@ -31,37 +31,23 @@ of Segmentation Supervision for Medical Object Detection" </a>, 2018
 Please cite the original publication [3].
 
 ## Installation
-Setup package in a virtual environment:
+Setup package in virtual environment
 ```
-git clone https://github.com/pfjaeger/medicaldetectiontoolkit.git .
+git clone https://github.com/MIC-DKFZ/medicaldetectiontoolkit.git.
 cd medicaldetectiontoolkit
-virtualenv -p python3.6 venv
-source venv/bin/activate
-pip3 install -e .
+virtualenv -p python3.7 mdt
+source mdt/bin/activate
+python setup.py install
 ```
+This framework uses two custom mixed C++/CUDA extensions: Non-maximum suppression (NMS) and RoIAlign. Both are adapted from the original pytorch extensions (under torchvision.ops.boxes and ops.roialign).
+The extensions are automatically compiled from the provided source files under RegRCNN/custom_extensions with above setup.py.
+Note: If you'd like to import the raw extensions (not the wrapper modules), be sure to import torch first.
 
-We use two cuda functions: Non-Maximum Suppression (taken from [pytorch-faster-rcnn](https://github.com/ruotianluo/pytorch-faster-rcnn) and added adaption for 3D) and RoiAlign (taken from [RoiAlign](https://github.com/longcw/RoIAlign.pytorch), fixed according to [this bug report](https://hackernoon.com/how-tensorflows-tf-image-resize-stole-60-days-of-my-life-aba5eb093f35), and added adaption for 3D). In this framework, they come pre-compile for TitanX. If you have a different GPU you need to re-compile these functions:
-
-
-| GPU | arch |
-| --- | --- |
-| TitanX | sm_52 |
-| GTX 960M | sm_50 |
-| GTX 1070 | sm_61 |
-| GTX 1080 (Ti) | sm_61 |
-  
+Alternatively, you may install the framework via pip by replacing the last line above (python setup.py install) by:
 ```
-cd cuda_functions/nms_xD/src/cuda/
-nvcc -c -o nms_kernel.cu.o nms_kernel.cu -x cu -Xcompiler -fPIC -arch=[arch]
-cd ../../
-python build.py
-cd ../
-
-cd cuda_functions/roi_align_xD/roi_align/src/cuda/
-nvcc -c -o crop_and_resize_kernel.cu.o crop_and_resize_kernel.cu -x cu -Xcompiler -fPIC -arch=[arch]
-cd ../../
-python build.py
-cd ../../
+pip install .
+pip install -e ./custom_extensions/nms
+pip install -e ./custom_extensions/roi_align
 ```
 
 ## Prepare the Data

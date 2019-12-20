@@ -22,11 +22,12 @@ published under MIT license.
 import numpy as np
 import scipy.misc
 import scipy.ndimage
+import scipy.interpolate
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
 
-
+import tqdm
 ############################################################
 #  Bounding Boxes
 ############################################################
@@ -635,6 +636,125 @@ def clip_to_window(window, boxes):
         boxes[:, 5] = boxes[:, 5].clamp(float(window[4]), float(window[5]))
 
     return boxes
+
+
+def nms_numpy(box_coords, scores, thresh):
+    """ non-maximum suppression on 2D or 3D boxes in numpy.
+    :param box_coords: [y1,x1,y2,x2 (,z1,z2)] with y1<=y2, x1<=x2, z1<=z2.
+    :param scores: ranking scores (higher score == higher rank) of boxes.
+    :param thresh: IoU threshold for clustering.
+    :return:
+    """
+    y1 = box_coords[:, 0]
+    x1 = box_coords[:, 1]
+    y2 = box_coords[:, 2]
+    x2 = box_coords[:, 3]
+    assert np.all(y1 <= y2) and np.all(x1 <= x2), """"the definition of the coordinates is crucially important here: 
+            coordinates of which maxima are taken need to be the lower coordinates"""
+    areas = (x2 - x1) * (y2 - y1)
+
+    is_3d = box_coords.shape[1] == 6
+    if is_3d: # 3-dim case
+        z1 = box_coords[:, 4]
+        z2 = box_coords[:, 5]
+        assert np.all(z1<=z2), """"the definition of the coordinates is crucially important here: 
+           coordinates of which maxima are taken need to be the lower coordinates"""
+        areas *= (z2 - z1)
+
+    order = scores.argsort()[::-1]
+
+    keep = []
+    while order.size > 0:  # order is the sorted index.  maps order to index: order[1] = 24 means (rank1, ix 24)
+        i = order[0] # highest scoring element
+        yy1 = np.maximum(y1[i], y1[order])  # highest scoring element still in >order<, is compared to itself, that is okay.
+        xx1 = np.maximum(x1[i], x1[order])
+        yy2 = np.minimum(y2[i], y2[order])
+        xx2 = np.minimum(x2[i], x2[order])
+
+        h = np.maximum(0.0, yy2 - yy1)
+        w = np.maximum(0.0, xx2 - xx1)
+        inter = h * w
+
+        if is_3d:
+            zz1 = np.maximum(z1[i], z1[order])
+            zz2 = np.minimum(z2[i], z2[order])
+            d = np.maximum(0.0, zz2 - zz1)
+            inter *= d
+
+        iou = inter / (areas[i] + areas[order] - inter)
+
+        non_matches = np.nonzero(iou <= thresh)[0]  # get all elements that were not matched and discard all others.
+        order = order[non_matches]
+        keep.append(i)
+
+    return keep
+
+def roi_align_3d_numpy(input: np.ndarray, rois, output_size: tuple,
+                       spatial_scale: float = 1., sampling_ratio: int = -1) -> np.ndarray:
+    """ This fct mainly serves as a verification method for 3D CUDA implementation of RoIAlign, it's highly
+        inefficient due to the nested loops.
+    :param input:  (ndarray[N, C, H, W, D]): input feature map
+    :param rois: list (N,K(n), 6), K(n) = nr of rois in batch-element n, single roi of format (y1,x1,y2,x2,z1,z2)
+    :param output_size:
+    :param spatial_scale:
+    :param sampling_ratio:
+    :return: (List[N, K(n), C, output_size[0], output_size[1], output_size[2]])
+    """
+
+    out_height, out_width, out_depth = output_size
+
+    coord_grid = tuple([np.linspace(0, input.shape[dim] - 1, num=input.shape[dim]) for dim in range(2, 5)])
+    pooled_rois = [[]] * len(rois)
+    assert len(rois) == input.shape[0], "batch dim mismatch, rois: {}, input: {}".format(len(rois), input.shape[0])
+    print("Numpy 3D RoIAlign progress:", end="\n")
+    for b in range(input.shape[0]):
+        for roi in tqdm.tqdm(rois[b]):
+            y1, x1, y2, x2, z1, z2 = np.array(roi) * spatial_scale
+            roi_height = max(float(y2 - y1), 1.)
+            roi_width = max(float(x2 - x1), 1.)
+            roi_depth = max(float(z2 - z1), 1.)
+
+            if sampling_ratio <= 0:
+                sampling_ratio_h = int(np.ceil(roi_height / out_height))
+                sampling_ratio_w = int(np.ceil(roi_width / out_width))
+                sampling_ratio_d = int(np.ceil(roi_depth / out_depth))
+            else:
+                sampling_ratio_h = sampling_ratio_w = sampling_ratio_d = sampling_ratio  # == n points per bin
+
+            bin_height = roi_height / out_height
+            bin_width = roi_width / out_width
+            bin_depth = roi_depth / out_depth
+
+            n_points = sampling_ratio_h * sampling_ratio_w * sampling_ratio_d
+            pooled_roi = np.empty((input.shape[1], out_height, out_width, out_depth), dtype="float32")
+            for chan in range(input.shape[1]):
+                lin_interpolator = scipy.interpolate.RegularGridInterpolator(coord_grid, input[b, chan],
+                                                                             method="linear")
+                for bin_iy in range(out_height):
+                    for bin_ix in range(out_width):
+                        for bin_iz in range(out_depth):
+
+                            bin_val = 0.
+                            for i in range(sampling_ratio_h):
+                                for j in range(sampling_ratio_w):
+                                    for k in range(sampling_ratio_d):
+                                        loc_ijk = [
+                                            y1 + bin_iy * bin_height + (i + 0.5) * (bin_height / sampling_ratio_h),
+                                            x1 + bin_ix * bin_width + (j + 0.5) * (bin_width / sampling_ratio_w),
+                                            z1 + bin_iz * bin_depth + (k + 0.5) * (bin_depth / sampling_ratio_d)]
+                                        # print("loc_ijk", loc_ijk)
+                                        if not (np.any([c < -1.0 for c in loc_ijk]) or loc_ijk[0] > input.shape[2] or
+                                                loc_ijk[1] > input.shape[3] or loc_ijk[2] > input.shape[4]):
+                                            for catch_case in range(3):
+                                                # catch on-border cases
+                                                if int(loc_ijk[catch_case]) == input.shape[catch_case + 2] - 1:
+                                                    loc_ijk[catch_case] = input.shape[catch_case + 2] - 1
+                                            bin_val += lin_interpolator(loc_ijk)
+                            pooled_roi[chan, bin_iy, bin_ix, bin_iz] = bin_val / n_points
+
+            pooled_rois[b].append(pooled_roi)
+
+    return np.array(pooled_rois)
 
 
 ############################################################

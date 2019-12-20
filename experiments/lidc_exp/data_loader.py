@@ -459,3 +459,27 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
     logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
+
+if __name__=="__main__":
+    import utils.exp_utils as utils
+    from configs import configs
+
+    total_stime = time.time()
+
+
+    cf = configs()
+    cf.created_fold_id_pickle = False
+    cf.exp_dir = "experiments/dev/"
+    cf.plot_dir = cf.exp_dir + "plots"
+    os.makedirs(cf.exp_dir, exist_ok=True)
+    cf.fold = 0
+    logger = utils.get_logger(cf.exp_dir)
+    batch_gen = get_train_generators(cf, logger)
+
+    train_batch = next(batch_gen["train"])
+
+
+    mins, secs = divmod((time.time() - total_stime), 60)
+    h, mins = divmod(mins, 60)
+    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    print("{} total runtime: {}".format(os.path.split(__file__)[1], t))

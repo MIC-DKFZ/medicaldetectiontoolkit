@@ -21,7 +21,7 @@ import os
 class DefaultConfigs:
 
     def __init__(self, model, server_env=None, dim=2):
-
+        self.server_env = server_env
         #########################
         #         I/O           #
         #########################

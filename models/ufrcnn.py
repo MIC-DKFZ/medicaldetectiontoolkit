@@ -1237,7 +1237,7 @@ class net(nn.Module):
         self.batch_mrcnn_class_scores = F.softmax(batch_mrcnn_class_logits, dim=1)
 
         # refine classified proposals, filter and return final detections.
-        detections = refine_detections(self.cf, batch_ixs, rpn_rois, batch_mrcnn_bbox, batch_ixs)
+        detections = refine_detections(self.cf, batch_ixs, rpn_rois, batch_mrcnn_bbox, self.batch_mrcnn_class_scores)
 
         return [rpn_pred_logits, rpn_pred_deltas, batch_proposal_boxes, detections, seg_logits]
 

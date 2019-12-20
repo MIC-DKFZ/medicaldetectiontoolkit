@@ -542,19 +542,21 @@ def detection_target_layer(batch_proposals, batch_mrcnn_class_scores, batch_gt_c
             deltas /= std_dev
 
             # Assign positive ROIs to GT masks
-            roi_masks = gt_masks[roi_gt_box_assignment].unsqueeze(1)
-            assert roi_masks.shape[-1] == 1
+            roi_masks = gt_masks[roi_gt_box_assignment]
+            assert roi_masks.shape[1] == 1, "desired to have more than one channel in gt masks?"
 
             # Compute mask targets
             boxes = positive_rois
             box_ids = torch.arange(roi_masks.shape[0]).cuda().unsqueeze(1).float()
-
             if len(cf.mask_shape) == 2:
-                # todo what are the dims of roi_masks? (n_matched_boxes_with_gts, 1 (dummy channel dim), y,x, 1 (WHY?))
+                # need to remap normalized box coordinates to unnormalized mask coordinates.
+                y_exp, x_exp = roi_masks.shape[2:]  # exp = expansion
+                boxes.mul_(torch.tensor([y_exp, x_exp, y_exp, x_exp], dtype=torch.float32).cuda())
                 masks = roi_align.roi_align_2d(roi_masks, torch.cat((box_ids, boxes), dim=1), cf.mask_shape)
             else:
+                y_exp, x_exp, z_exp = roi_masks.shape[2:]  # exp = expansion
+                boxes.mul_(torch.tensor([y_exp, x_exp, y_exp, x_exp, z_exp, z_exp], dtype=torch.float32).cuda())
                 masks = roi_align.roi_align_3d(roi_masks, torch.cat((box_ids, boxes), dim=1), cf.mask_shape)
-
             masks = masks.squeeze(1)
             # Threshold mask pixels at 0.5 to have GT masks be 0 or 1 to use with
             # binary cross entropy loss.
@@ -871,11 +873,11 @@ def get_results(cf, img_shape, detections, detection_masks, box_results_list=Non
                     full_masks.append(mutils.unmold_mask_2D(masks[i], boxes[i], permuted_image_shape)
                     if cf.dim == 2 else mutils.unmold_mask_3D(masks[i], boxes[i], permuted_image_shape))
             # if masks are returned, take max over binary full masks of all predictions in this image.
-            # right now only binary masks for plotting/monitoring. for instance segmentation return all proposal maks.
+            # right now only binary masks for plotting/monitoring. for instance segmentation return all proposal masks.
             final_masks = np.max(np.array(full_masks), 0) if len(full_masks) > 0 else np.zeros(
                 (*permuted_image_shape[:-1],))
 
-            # add final perdictions to results.
+            # add final predictions to results.
             if 0 not in boxes.shape:
                 for ix2, score in enumerate(scores):
                     box_results_list[ix].append({'box_coords': boxes[ix2], 'box_score': score,
@@ -949,6 +951,8 @@ class net(nn.Module):
         train method (also used for validation monitoring). wrapper around forward pass of network. prepares input data
         for processing, computes losses, and stores outputs in a dictionary.
         :param batch: dictionary containing 'data', 'seg', etc.
+                    data_dict['roi_masks']: (b, n(b), 1, h(n), w(n) (z(n))) list like batch['roi_labels'] but with
+                    arrays (masks) inplace of integers. n == number of rois per this batch element.
         :return: results_dict: dictionary with keys:
                 'boxes': list over batch elements. each batch element is a list of boxes. each box is a dictionary:
                         [[{box_0}, ... {box_n}], [{box_0}, ... {box_n}], ...]
@@ -958,10 +962,10 @@ class net(nn.Module):
         img = batch['data']
         gt_class_ids = batch['roi_labels']
         gt_boxes = batch['bb_target']
-        axes = (0, 2, 3, 1) if self.cf.dim == 2 else (0, 2, 3, 4, 1)
-        gt_masks = [np.transpose(batch['roi_masks'][ii], axes=axes) for ii in range(len(batch['roi_masks']))]
-
-
+        #axes = (0, 2, 3, 1) if self.cf.dim == 2 else (0, 2, 3, 4, 1)
+        #gt_masks = [np.transpose(batch['roi_masks'][ii], axes=axes) for ii in range(len(batch['roi_masks']))]
+        # --> now GT masks has c==channels in last dimension.
+        gt_masks = batch['roi_masks']
         img = torch.from_numpy(img).float().cuda()
         batch_rpn_class_loss = torch.FloatTensor([0]).cuda()
         batch_rpn_bbox_loss = torch.FloatTensor([0]).cuda()
