@@ -161,8 +161,9 @@ if __name__ == '__main__':
             cf.max_test_patients = 1
 
         cf.slurm_job_id = args.slurm_job_id
-        model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
+        model = utils.import_module('model', cf.model_path)
+        print("loaded model from {}".format(cf.model_path))
         if folds is None:
             folds = range(cf.n_cv_splits)
 
@@ -190,8 +191,9 @@ if __name__ == '__main__':
             cf.test_n_epochs =  1; cf.max_test_patients = 1
 
         cf.slurm_job_id = args.slurm_job_id
-        model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
+        model = utils.import_module('model', cf.model_path)
+        print("loaded model from {}".format(cf.model_path))
         if folds is None:
             folds = range(cf.n_cv_splits)
 

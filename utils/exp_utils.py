@@ -61,55 +61,47 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
     """
 
     if is_training:
-
-        # the first process of an experiment creates the directories and copies the config to exp_path.
-        if not os.path.exists(exp_path):
-            os.mkdir(exp_path)
-            os.mkdir(os.path.join(exp_path, 'plots'))
-            subprocess.call('cp {} {}'.format(os.path.join(dataset_path, 'configs.py'), os.path.join(exp_path, 'configs.py')), shell=True)
-            subprocess.call('cp {} {}'.format('default_configs.py', os.path.join(exp_path, 'default_configs.py')), shell=True)
-
-
         if use_stored_settings:
-            subprocess.call('cp {} {}'.format('default_configs.py', os.path.join(exp_path, 'default_configs.py')), shell=True)
-            cf_file = import_module('cf', os.path.join(exp_path, 'configs.py'))
+            cf_file = import_module('cf_file', os.path.join(exp_path, 'configs.py'))
             cf = cf_file.configs(server_env)
-            # only the first process copies the model selcted in configs to exp_path.
-            if not os.path.isfile(os.path.join(exp_path, 'model.py')):
-                subprocess.call('cp {} {}'.format(cf.model_path, os.path.join(exp_path, 'model.py')), shell=True)
-                subprocess.call('cp {} {}'.format(os.path.join(cf.backbone_path), os.path.join(exp_path, 'backbone.py')), shell=True)
-
-            # copy the snapshot model scripts from exp_dir back to the source_dir as tmp_model / tmp_backbone.
-            tmp_model_path = os.path.join(cf.source_dir, 'models', 'tmp_model.py')
-            tmp_backbone_path = os.path.join(cf.source_dir, 'models', 'tmp_backbone.py')
-            subprocess.call('cp {} {}'.format(os.path.join(exp_path, 'model.py'), tmp_model_path), shell=True)
-            subprocess.call('cp {} {}'.format(os.path.join(exp_path, 'backbone.py'), tmp_backbone_path), shell=True)
-            cf.model_path = tmp_model_path
-            cf.backbone_path = tmp_backbone_path
-
+            # in this mode, previously saved model and backbone need to be found in exp dir.
+            if not os.path.isfile(os.path.join(exp_path, 'model.py')) or \
+                    not os.path.isfile(os.path.join(exp_path, 'backbone.py')):
+                raise Exception(
+                    "Selected use_stored_settings option but no model and/or backbone source files exist in exp dir.")
+            cf.model_path = os.path.join(exp_path, 'model.py')
+            cf.backbone_path = os.path.join(exp_path, 'backbone.py')
         else:
+            # this case overwrites settings files in exp dir, i.e., default_configs, configs, backbone, model
+            os.makedirs(exp_path, exist_ok=True)
             # run training with source code info and copy snapshot of model to exp_dir for later testing (overwrite scripts if exp_dir already exists.)
-            cf_file = import_module('cf', os.path.join(dataset_path, 'configs.py'))
+            subprocess.call('cp {} {}'.format('default_configs.py', os.path.join(exp_path, 'default_configs.py')),
+                            shell=True)
+            subprocess.call(
+                'cp {} {}'.format(os.path.join(dataset_path, 'configs.py'), os.path.join(exp_path, 'configs.py')),
+                shell=True)
+            cf_file = import_module('cf_file', os.path.join(dataset_path, 'configs.py'))
             cf = cf_file.configs(server_env)
             subprocess.call('cp {} {}'.format(cf.model_path, os.path.join(exp_path, 'model.py')), shell=True)
             subprocess.call('cp {} {}'.format(cf.backbone_path, os.path.join(exp_path, 'backbone.py')), shell=True)
-            subprocess.call('cp {} {}'.format('default_configs.py', os.path.join(exp_path, 'default_configs.py')), shell=True)
-            subprocess.call('cp {} {}'.format(os.path.join(dataset_path, 'configs.py'), os.path.join(exp_path, 'configs.py')), shell=True)
+            if os.path.isfile(os.path.join(exp_path, "fold_ids.pickle")):
+                subprocess.call('rm {}'.format(os.path.join(exp_path, "fold_ids.pickle")), shell=True)
 
     else:
-        # for testing, copy the snapshot model scripts from exp_dir back to the source_dir as tmp_model / tmp_backbone.
-        cf_file = import_module('cf', os.path.join(exp_path, 'configs.py'))
+        # testing, use model and backbone stored in exp dir.
+        cf_file = import_module('cf_file', os.path.join(exp_path, 'configs.py'))
         cf = cf_file.configs(server_env)
-        tmp_model_path = os.path.join(cf.source_dir, 'models', 'tmp_model.py')
-        tmp_backbone_path = os.path.join(cf.source_dir, 'models', 'tmp_backbone.py')
-        subprocess.call('cp {} {}'.format(os.path.join(exp_path, 'model.py'), tmp_model_path), shell=True)
-        subprocess.call('cp {} {}'.format(os.path.join(exp_path, 'backbone.py'), tmp_backbone_path), shell=True)
-        cf.model_path = tmp_model_path
-        cf.backbone_path = tmp_backbone_path
+        cf.model_path = os.path.join(exp_path, 'model.py')
+        cf.backbone_path = os.path.join(exp_path, 'backbone.py')
+
 
     cf.exp_dir = exp_path
     cf.test_dir = os.path.join(cf.exp_dir, 'test')
     cf.plot_dir = os.path.join(cf.exp_dir, 'plots')
+    if not os.path.exists(cf.test_dir):
+        os.mkdir(cf.test_dir)
+    if not os.path.exists(cf.plot_dir):
+        os.mkdir(cf.plot_dir)
     cf.experiment_name = exp_path.split("/")[-1]
     cf.server_env = server_env
     cf.created_fold_id_pickle = False
