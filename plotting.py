@@ -160,7 +160,7 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
 
 
 class TrainingPlot_2Panel():
-
+    # todo remove since replaced by tensorboard?
 
     def __init__(self, cf):
 
@@ -191,7 +191,7 @@ class TrainingPlot_2Panel():
 
 
 def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict, do_validation):
-
+    # todo remove since replaced by tensorboard?
     monitor_values_keys = metrics['train']['monitor_values'][1][0].keys()
     separate_values = [v for fig_ix in separate_values_dict.values() for v in fig_ix]
     if figure_ix == 0:

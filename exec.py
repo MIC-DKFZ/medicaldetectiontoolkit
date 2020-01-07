@@ -44,7 +44,7 @@ def train(logger):
     starting_epoch = 1
 
     # prepare monitoring
-    monitor_metrics, TrainingPlot = utils.prepare_monitoring(cf)
+    monitor_metrics = utils.prepare_monitoring(cf)
 
     if cf.resume_to_checkpoint:
         starting_epoch, monitor_metrics = utils.load_checkpoint(cf.resume_to_checkpoint, net, optimizer)
@@ -76,9 +76,9 @@ def train(logger):
                         .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
                                 time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
             train_results_list.append([results_dict['boxes'], batch['pid']])
-            monitor_metrics['train']['monitor_values'][epoch].append(results_dict['monitor_values'])
 
         _, monitor_metrics['train'] = train_evaluator.evaluate_predictions(train_results_list, monitor_metrics['train'])
+        #import IPython; IPython.embed()
         train_time = time.time() - start_time
 
         logger.info('starting validation in mode {}.'.format(cf.val_mode))
@@ -94,13 +94,15 @@ def train(logger):
                     elif cf.val_mode == 'val_sampling':
                         results_dict = net.train_forward(batch, is_validation=True)
                     val_results_list.append([results_dict['boxes'], batch['pid']])
-                    monitor_metrics['val']['monitor_values'][epoch].append(results_dict['monitor_values'])
 
                 _, monitor_metrics['val'] = val_evaluator.evaluate_predictions(val_results_list, monitor_metrics['val'])
                 model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch)
 
             # update monitoring and prediction plots
-            TrainingPlot.update_and_save(monitor_metrics, epoch)
+            monitor_metrics.update({"lr":
+                                        {str(g): group['lr'] for (g, group) in enumerate(optimizer.param_groups)}})
+            logger.metrics2tboard(monitor_metrics, global_step=epoch)
+
             epoch_time = time.time() - start_time
             logger.info('trained epoch {}: took {} sec. ({} train / {} val)'.format(
                 epoch, epoch_time, train_time, epoch_time-train_time))
@@ -125,6 +127,7 @@ def test(logger):
 
 
 if __name__ == '__main__':
+    stime = time.time()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', type=str,  default='train_test',
@@ -161,9 +164,10 @@ if __name__ == '__main__':
             cf.max_test_patients = 1
 
         cf.slurm_job_id = args.slurm_job_id
+        logger = utils.get_logger(cf.exp_dir, cf.server_env)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         model = utils.import_module('model', cf.model_path)
-        print("loaded model from {}".format(cf.model_path))
+        logger.info("loaded model from {}".format(cf.model_path))
         if folds is None:
             folds = range(cf.n_cv_splits)
 
@@ -173,15 +177,11 @@ if __name__ == '__main__':
             cf.resume_to_checkpoint = resume_to_checkpoint
             if not os.path.exists(cf.fold_dir):
                 os.mkdir(cf.fold_dir)
-            logger = utils.get_logger(cf.fold_dir)
+            logger.set_logfile(fold=fold)
             train(logger)
             cf.resume_to_checkpoint = None
             if args.mode == 'train_test':
                 test(logger)
-
-            for hdlr in logger.handlers:
-                hdlr.close()
-            logger.handlers = []
 
     elif args.mode == 'test':
 
@@ -191,26 +191,24 @@ if __name__ == '__main__':
             cf.test_n_epochs =  1; cf.max_test_patients = 1
 
         cf.slurm_job_id = args.slurm_job_id
+        logger = utils.get_logger(cf.exp_dir, cf.server_env)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         model = utils.import_module('model', cf.model_path)
-        print("loaded model from {}".format(cf.model_path))
+        logger.info("loaded model from {}".format(cf.model_path))
         if folds is None:
             folds = range(cf.n_cv_splits)
 
         for fold in folds:
             cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
-            logger = utils.get_logger(cf.fold_dir)
             cf.fold = fold
+            logger.set_logfile(fold=fold)
             test(logger)
 
-            for hdlr in logger.handlers:
-                hdlr.close()
-            logger.handlers = []
 
     # load raw predictions saved by predictor during testing, run aggregation algorithms and evaluation.
     elif args.mode == 'analysis':
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, is_training=False, use_stored_settings=True)
-        logger = utils.get_logger(cf.exp_dir)
+        logger = utils.get_logger(cf.exp_dir, cf.server_env)
 
         if cf.hold_out_test_set:
             cf.folds = args.folds
@@ -224,6 +222,7 @@ if __name__ == '__main__':
             for fold in folds:
                 cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
                 cf.fold = fold
+                logger.set_logfile(fold=fold)
                 predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
                 results_list = predictor.load_saved_predictions(apply_wbc=True)
                 logger.info('starting evaluation...')
@@ -240,3 +239,9 @@ if __name__ == '__main__':
 
     else:
         raise RuntimeError('mode specified in args is not implemented...')
+
+    mins, secs = divmod((time.time() - stime), 60)
+    h, mins = divmod(mins, 60)
+    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    logger.info("{} total runtime: {}".format(os.path.split(__file__)[1], t))
+    del logger

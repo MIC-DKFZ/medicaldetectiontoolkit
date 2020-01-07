@@ -219,9 +219,9 @@ class Evaluator():
                     stats_dict['ap'] = get_roi_ap_from_df([spec_df, self.cf.min_det_thresh, self.cf.per_patient_ap])
                     # AUC not sensible on roi-level, since true negative box predictions do not exist. Would reward
                     # higher amounts of low confidence false positives.
-                    stats_dict['auc'] = 0
-                    stats_dict['roc'] = None
-                    stats_dict['prc'] = None
+                    stats_dict['auc'] = np.nan
+                    stats_dict['roc'] = np.nan
+                    stats_dict['prc'] = np.nan
 
                     # for the aggregated test set case, additionally get the scores for averaging over fold results.
                     if len(df.fold.unique()) > 1:
@@ -267,10 +267,10 @@ class Evaluator():
                 # fill new results into monitor_metrics dict. for simplicity, only one class (of interest) is monitored on patient level.
                 if monitor_metrics is not None and not (score_level == 'patient' and cl != self.cf.patient_class_of_interest):
                     score_level_name = 'patient' if score_level == 'patient' else self.cf.class_dict[cl]
-                    monitor_metrics[score_level_name + '_ap'].append(stats_dict['ap'] if stats_dict['ap'] > 0 else None)
+                    monitor_metrics[score_level_name + '_ap'].append(stats_dict['ap'] if stats_dict['ap'] > 0 else np.nan)
                     if score_level == 'patient':
                         monitor_metrics[score_level_name + '_auc'].append(
-                            stats_dict['auc'] if stats_dict['auc'] > 0 else None)
+                            stats_dict['auc'] if stats_dict['auc'] > 0 else np.nan)
 
                 if self.cf.plot_prediction_histograms:
                     out_filename = os.path.join(

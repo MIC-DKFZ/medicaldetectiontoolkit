@@ -13,38 +13,127 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-import numpy as np
-import logging
+import sys
 import subprocess
 import os
-import torch
-from collections import OrderedDict
+
 import plotting
-import sys
 import importlib.util
-import pandas as pd
 import pickle
 
+import logging
+from torch.utils.tensorboard import SummaryWriter
+
+from collections import OrderedDict
+import numpy as np
+import torch
+import pandas as pd
 
 
-def get_logger(exp_dir):
+class CombinedLogger(object):
+    """Combine console and tensorboard logger and record system metrics.
     """
-    creates logger instance. writing out info to file and to terminal.
+
+    def __init__(self, name, log_dir, server_env=True, fold="all"):
+        self.pylogger = logging.getLogger(name)
+        self.tboard = SummaryWriter(log_dir=os.path.join(log_dir, "tboard"))
+        self.log_dir = log_dir
+        self.fold = str(fold)
+        self.server_env = server_env
+
+        self.pylogger.setLevel(logging.DEBUG)
+        self.log_file = os.path.join(log_dir, "fold_"+self.fold, 'exec.log')
+        os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
+        self.pylogger.addHandler(logging.FileHandler(self.log_file))
+        if not server_env:
+            self.pylogger.addHandler(ColorHandler())
+        else:
+            self.pylogger.addHandler(logging.StreamHandler())
+        self.pylogger.propagate = False
+
+    def __getattr__(self, attr):
+        """delegate all undefined method requests to objects of
+        this class in order pylogger, tboard (first find first serve).
+        E.g., combinedlogger.add_scalars(...) should trigger self.tboard.add_scalars(...)
+        """
+        for obj in [self.pylogger, self.tboard]:
+            if attr in dir(obj):
+                return getattr(obj, attr)
+        print("logger attr not found")
+
+    def set_logfile(self, fold=None, log_file=None):
+        if fold is not None:
+            self.fold = str(fold)
+        if log_file is None:
+            self.log_file = os.path.join(self.log_dir, "fold_"+self.fold, 'exec.log')
+        else:
+            self.log_file = log_file
+        os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
+        for hdlr in self.pylogger.handlers:
+            hdlr.close()
+        self.pylogger.handlers = []
+        self.pylogger.addHandler(logging.FileHandler(self.log_file))
+        if not self.server_env:
+            self.pylogger.addHandler(ColorHandler())
+        else:
+            self.pylogger.addHandler(logging.StreamHandler())
+
+    def metrics2tboard(self, metrics, global_step=None, suptitle=None):
+        """
+        :param metrics: {'train': dataframe, 'val':df}, df as produced in
+            evaluator.py.evaluate_predictions
+        """
+        # print("metrics", metrics)
+        if global_step is None:
+            global_step = len(metrics['train'][list(metrics['train'].keys())[0]]) - 1
+        if suptitle is not None:
+            suptitle = str(suptitle)
+        else:
+            suptitle = "Fold_" + str(self.fold)
+
+        for key in ['train', 'val']:
+            # series = {k:np.array(v[-1]) for (k,v) in metrics[key].items() if not np.isnan(v[-1]) and not 'Bin_Stats' in k}
+            loss_series = {}
+            unc_series = {}
+            bin_stat_series = {}
+            mon_met_series = {}
+            for tag, val in metrics[key].items():
+                val = val[-1]  # maybe remove list wrapping, recording in evaluator?
+                if 'bin_stats' in tag.lower() and not np.isnan(val):
+                    bin_stat_series["{}".format(tag.split("/")[-1])] = val
+                elif 'uncertainty' in tag.lower() and not np.isnan(val):
+                    unc_series["{}".format(tag)] = val
+                elif 'loss' in tag.lower() and not np.isnan(val):
+                    loss_series["{}".format(tag)] = val
+                elif not np.isnan(val):
+                    mon_met_series["{}".format(tag)] = val
+
+            self.tboard.add_scalars(suptitle + "/Binary_Statistics/{}".format(key), bin_stat_series, global_step)
+            self.tboard.add_scalars(suptitle + "/Uncertainties/{}".format(key), unc_series, global_step)
+            self.tboard.add_scalars(suptitle + "/Losses/{}".format(key), loss_series, global_step)
+            self.tboard.add_scalars(suptitle + "/Monitor_Metrics/{}".format(key), mon_met_series, global_step)
+        self.tboard.add_scalars(suptitle + "/Learning_Rate", metrics["lr"], global_step)
+        return
+
+    def __del__(self):  # otherwise might produce multiple prints e.g. in ipython console
+        for hdlr in self.pylogger.handlers:
+            hdlr.close()
+        self.pylogger.handlers = []
+        del self.pylogger
+        self.tboard.close()
+
+
+def get_logger(exp_dir, server_env=False):
+    """
+    creates logger instance. writing out info to file, to terminal and to tensorboard.
     :param exp_dir: experiment directory, where exec.log file is stored.
-    :return: logger instance.
+    :param server_env: True if operating in server environment (e.g., gpu cluster)
+    :return: custom CombinedLogger instance.
     """
-
-    logger = logging.getLogger('medicaldetectiontoolkit')
-    logger.setLevel(logging.DEBUG)
-    log_file = exp_dir + '/exec.log'
-    hdlr = logging.FileHandler(log_file)
-    print('Logging to {}'.format(log_file))
-    logger.addHandler(hdlr)
-    logger.addHandler(ColorHandler())
-    logger.propagate = False
+    log_dir = os.path.join(exp_dir, "logs")
+    logger = CombinedLogger('medicaldetectiontoolkit', log_dir, server_env=server_env)
+    print("Logging to {}".format(logger.log_file))
     return logger
-
 
 
 def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_training=True):
@@ -211,19 +300,13 @@ def prepare_monitoring(cf):
     if 'patient' in cf.report_score_level:
         metric_classes.extend(['patient'])
     for cl in metric_classes:
-        metrics['train'][cl + '_ap'] = [None]
-        metrics['val'][cl + '_ap'] = [None]
+        metrics['train'][cl + '_ap'] = [np.nan]
+        metrics['val'][cl + '_ap'] = [np.nan]
         if cl == 'patient':
-            metrics['train'][cl + '_auc'] = [None]
-            metrics['val'][cl + '_auc'] = [None]
+            metrics['train'][cl + '_auc'] = [np.nan]
+            metrics['val'][cl + '_auc'] = [np.nan]
 
-    metrics['train']['monitor_values'] = [[] for _ in range(cf.num_epochs + 1)]
-    metrics['val']['monitor_values'] = [[] for _ in range(cf.num_epochs + 1)]
-
-    # generate isntance of monitor plot class.
-    TrainingPlot = plotting.TrainingPlot_2Panel(cf)
-
-    return metrics, TrainingPlot
+    return metrics
 
 
 

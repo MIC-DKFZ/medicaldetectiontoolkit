@@ -1048,7 +1048,7 @@ class net(nn.Module):
 
 
         # run unmolding of predictions for monitoring and merge all results to one dictionary.
-        return_masks = self.cf.return_masks_in_val if is_validation else False
+        return_masks = True#self.cf.return_masks_in_val if is_validation else False
         results_dict = get_results(self.cf, img.shape, detections, detection_masks,
                                    box_results_list, return_masks=return_masks)
 
