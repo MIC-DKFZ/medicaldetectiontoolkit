@@ -226,17 +226,17 @@ __global__ void RoIAlignForward(const int nthreads, const T* input, const T spat
     for (int iy = 0; iy < roi_bin_grid_h; iy++) // e.g., iy = 0, 1
     {
       const T y = roi_start_h + ph * bin_size_h +
-          static_cast<T>(iy + .5f) * bin_size_h / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5, always in the middle of two grid pointsk
+          static_cast<T>(iy + .5f) * (bin_size_h - 1.f) / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5, always in the middle of two grid pointsk
 
       for (int ix = 0; ix < roi_bin_grid_w; ix++)
       {
         const T x = roi_start_w + pw * bin_size_w +
-            static_cast<T>(ix + .5f) * bin_size_w / static_cast<T>(roi_bin_grid_w);
+            static_cast<T>(ix + .5f) * (bin_size_w - 1.f) / static_cast<T>(roi_bin_grid_w);
 
         for (int iz = 0; iz < roi_bin_grid_d; iz++)
         {
           const T z = roi_start_d + pd * bin_size_d +
-              static_cast<T>(iz + .5f) * bin_size_d / static_cast<T>(roi_bin_grid_d);
+              static_cast<T>(iz + .5f) * (bin_size_d - 1.f) / static_cast<T>(roi_bin_grid_d);
           // TODO verify trilinear interpolation
           T val = trilinear_interpolate(offset_input, height, width, depth, y, x, z, index);
           output_val += val;
@@ -269,10 +269,10 @@ __global__ void RoIAlignBackward(const int nthreads, const T* grad_output, const
     int roi_batch_ind = offset_rois[0];
 
     // Do not using rounding; this implementation detail is critical
-    T roi_start_w = offset_rois[1] * spatial_scale;
-    T roi_start_h = offset_rois[2] * spatial_scale;
-    T roi_end_w = offset_rois[3] * spatial_scale;
-    T roi_end_h = offset_rois[4] * spatial_scale;
+    T roi_start_h = offset_rois[1] * spatial_scale;
+    T roi_start_w = offset_rois[2] * spatial_scale;
+    T roi_end_h = offset_rois[3] * spatial_scale;
+    T roi_end_w = offset_rois[4] * spatial_scale;
     T roi_start_d = offset_rois[5] * spatial_scale;
     T roi_end_d = offset_rois[6] * spatial_scale;
 
@@ -306,17 +306,17 @@ __global__ void RoIAlignBackward(const int nthreads, const T* grad_output, const
     for (int iy = 0; iy < roi_bin_grid_h; iy++) // e.g., iy = 0, 1
     {
       const T y = roi_start_h + ph * bin_size_h +
-          static_cast<T>(iy + .5f) * bin_size_h / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
+          static_cast<T>(iy + .5f) * (bin_size_h - 1.f) / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
 
       for (int ix = 0; ix < roi_bin_grid_w; ix++)
       {
         const T x = roi_start_w + pw * bin_size_w +
-          static_cast<T>(ix + .5f) * bin_size_w / static_cast<T>(roi_bin_grid_w);
+          static_cast<T>(ix + .5f) * (bin_size_w - 1.f) / static_cast<T>(roi_bin_grid_w);
 
         for (int iz = 0; iz < roi_bin_grid_d; iz++)
         {
           const T z = roi_start_d + pd * bin_size_d +
-              static_cast<T>(iz + .5f) * bin_size_d / static_cast<T>(roi_bin_grid_d);
+              static_cast<T>(iz + .5f) * (bin_size_d - 1.f) / static_cast<T>(roi_bin_grid_d);
 
           T g000, g001, g010, g100, g011, g101, g110, g111; // will hold the current partial derivatives
           int x0, x1, y0, y1, z0, z1;
@@ -377,7 +377,7 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input, const at::Tensor& rois
   auto height = input.size(2);
   auto width = input.size(3);
   auto depth = input.size(4);
-  //std::cout << "input.options" << input.options() << std::endl;
+
   at::Tensor output = at::zeros(
       {num_rois, channels, pooled_height, pooled_width, pooled_depth}, input.options());
 
@@ -393,7 +393,6 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input, const at::Tensor& rois
     return output;
   }
 
-  //std::printf("launching kernel\n");
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.type(), "ROIAlign forward in 3d", [&] {
     RoIAlignForward<scalar_t><<<grid, block, 0, stream>>>(
         output_size,

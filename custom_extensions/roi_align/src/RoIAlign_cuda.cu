@@ -9,7 +9,7 @@ ROIAlign implementation in CUDA from pytorch framework
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/cuda/CUDAGuard.h>
 #include <ATen/cuda/CUDAApplyUtils.cuh>
-
+#include <typeinfo>
 #include "cuda_helpers.h"
 
 template <typename T>
@@ -81,24 +81,24 @@ __global__ void RoIAlignForward(
     T* output) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     // (n, c, ph, pw) is an element in the pooled output
-    int pw = index % pooled_width;
-    int ph = (index / pooled_width) % pooled_height;
-    int c = (index / pooled_width / pooled_height) % channels;
-    int n = index / pooled_width / pooled_height / channels;
+    const int pw = index % pooled_width;
+    const int ph = (index / pooled_width) % pooled_height;
+    const int c = (index / pooled_width / pooled_height) % channels;
+    const int n = index / pooled_width / pooled_height / channels;
 
     const T* offset_rois = rois + n * 5;
     int roi_batch_ind = offset_rois[0];
 
     // Do not using rounding; this implementation detail is critical
-    T roi_start_w = offset_rois[1] * spatial_scale;
-    T roi_start_h = offset_rois[2] * spatial_scale;
-    T roi_end_w = offset_rois[3] * spatial_scale;
-    T roi_end_h = offset_rois[4] * spatial_scale;
+    T roi_start_h = offset_rois[1] * spatial_scale;
+    T roi_start_w = offset_rois[2] * spatial_scale;
+    T roi_end_h = offset_rois[3] * spatial_scale;
+    T roi_end_w = offset_rois[4] * spatial_scale;
 
     // Force malformed ROIs to be 1x1
     T roi_width = max(roi_end_w - roi_start_w, (T)1.);
     T roi_height = max(roi_end_h - roi_start_h, (T)1.);
-    //printf("roi height %f, width %f\n", (float) roi_height, (float) roi_width);
+
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
@@ -114,18 +114,14 @@ __global__ void RoIAlignForward(
 
     // We do average (integral) pooling inside a bin
     const T count = roi_bin_grid_h * roi_bin_grid_w; // e.g. = 4
-
     T output_val = 0.;
     for (int iy = 0; iy < roi_bin_grid_h; iy++) // e.g., iy = 0, 1
     {
       const T y = roi_start_h + ph * bin_size_h +
-          static_cast<T>(iy + .5f) * bin_size_h /
-              static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
+          static_cast<T>(iy + .5f) * (bin_size_h - 1.f) / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
       for (int ix = 0; ix < roi_bin_grid_w; ix++) {
         const T x = roi_start_w + pw * bin_size_w +
-            static_cast<T>(ix + .5f) * bin_size_w /
-                static_cast<T>(roi_bin_grid_w);
-
+            static_cast<T>(ix + .5f) * (bin_size_w - 1.f) / static_cast<T>(roi_bin_grid_w);
         T val = bilinear_interpolate(offset_input, height, width, y, x, index);
         output_val += val;
       }
@@ -226,10 +222,10 @@ __global__ void RoIAlignBackward(
     int roi_batch_ind = offset_rois[0];
 
     // Do not using rounding; this implementation detail is critical
-    T roi_start_w = offset_rois[1] * spatial_scale;
-    T roi_start_h = offset_rois[2] * spatial_scale;
-    T roi_end_w = offset_rois[3] * spatial_scale;
-    T roi_end_h = offset_rois[4] * spatial_scale;
+    T roi_start_h = offset_rois[1] * spatial_scale;
+    T roi_start_w = offset_rois[2] * spatial_scale;
+    T roi_end_h = offset_rois[3] * spatial_scale;
+    T roi_end_w = offset_rois[4] * spatial_scale;
 
     // Force malformed ROIs to be 1x1
     T roi_width = max(roi_end_w - roi_start_w, (T)1.);
@@ -260,12 +256,10 @@ __global__ void RoIAlignBackward(
     for (int iy = 0; iy < roi_bin_grid_h; iy++) // e.g., iy = 0, 1
     {
       const T y = roi_start_h + ph * bin_size_h +
-          static_cast<T>(iy + .5f) * bin_size_h /
-              static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
+          static_cast<T>(iy + .5f) * (bin_size_h - 1.f) / static_cast<T>(roi_bin_grid_h); // e.g., 0.5, 1.5
       for (int ix = 0; ix < roi_bin_grid_w; ix++) {
-        const T x = roi_start_w + pw * bin_size_w +
-            static_cast<T>(ix + .5f) * bin_size_w /
-                static_cast<T>(roi_bin_grid_w);
+        const T x = roi_start_w + pw * bin_size_w  +
+            static_cast<T>(ix + .5f) * (bin_size_w- 1.f) / static_cast<T>(roi_bin_grid_w);
 
         T w1, w2, w3, w4;
         int x_low, x_high, y_low, y_high;
@@ -321,10 +315,10 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input, const at::Tensor& rois
 
   at::cuda::CUDAGuard device_guard(input.device());
 
-  auto num_rois = rois.size(0);
-  auto channels = input.size(1);
-  auto height = input.size(2);
-  auto width = input.size(3);
+  int num_rois = rois.size(0);
+  int channels = input.size(1);
+  int height = input.size(2);
+  int width = input.size(3);
 
   at::Tensor output = at::zeros(
       {num_rois, channels, pooled_height, pooled_width}, input.options());
@@ -342,7 +336,6 @@ at::Tensor ROIAlign_forward_cuda(const at::Tensor& input, const at::Tensor& rois
     AT_CUDA_CHECK(cudaGetLastError());
     return output;
   }
-
 
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.type(), "ROIAlign_forward", [&] {
     RoIAlignForward<scalar_t><<<grid, block, 0, stream>>>(

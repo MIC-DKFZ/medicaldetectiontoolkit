@@ -99,17 +99,11 @@ class CombinedLogger(object):
             mon_met_series = {}
             for tag, val in metrics[key].items():
                 val = val[-1]  # maybe remove list wrapping, recording in evaluator?
-                if 'bin_stats' in tag.lower() and not np.isnan(val):
-                    bin_stat_series["{}".format(tag.split("/")[-1])] = val
-                elif 'uncertainty' in tag.lower() and not np.isnan(val):
-                    unc_series["{}".format(tag)] = val
-                elif 'loss' in tag.lower() and not np.isnan(val):
+                if 'loss' in tag.lower() and not np.isnan(val):
                     loss_series["{}".format(tag)] = val
                 elif not np.isnan(val):
                     mon_met_series["{}".format(tag)] = val
 
-            self.tboard.add_scalars(suptitle + "/Binary_Statistics/{}".format(key), bin_stat_series, global_step)
-            self.tboard.add_scalars(suptitle + "/Uncertainties/{}".format(key), unc_series, global_step)
             self.tboard.add_scalars(suptitle + "/Losses/{}".format(key), loss_series, global_step)
             self.tboard.add_scalars(suptitle + "/Monitor_Metrics/{}".format(key), mon_met_series, global_step)
         self.tboard.add_scalars(suptitle + "/Learning_Rate", metrics["lr"], global_step)
@@ -228,14 +222,14 @@ class ModelSelector:
     def run_model_selection(self, net, optimizer, monitor_metrics, epoch):
 
         # take the mean over all selection criteria in each epoch
-        non_nan_scores = np.mean(np.array([[0 if ii is None else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
+        non_nan_scores = np.mean(np.array([[0 if (ii is None or np.isnan(ii)) else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
         epochs_scores = [ii for ii in non_nan_scores[1:]]
         # ranking of epochs according to model_selection_criterion
         epoch_ranking = np.argsort(epochs_scores)[::-1] + 1 #epochs start at 1
         # if set in configs, epochs < min_save_thresh are discarded from saving process.
         epoch_ranking = epoch_ranking[epoch_ranking >= self.cf.min_save_thresh]
 
-        # check if current epoch is among the top-k epchs.
+        # check if current epoch is among the top-k epochs.
         if epoch in epoch_ranking[:self.cf.save_n_models]:
 
             save_dir = os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(epoch))
