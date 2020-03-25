@@ -72,7 +72,7 @@ def train(logger):
             optimizer.zero_grad()
             results_dict['torch_loss'].backward()
             optimizer.step()
-            logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.3f}s / bw {4:.3f}s / total {5:.3f}s || '
+            logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.2f}s / bw {4:.2f} s / total {5:.2f} s || '
                         .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
                                 time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
             train_results_list.append([results_dict['boxes'], batch['pid']])
@@ -104,7 +104,7 @@ def train(logger):
             logger.metrics2tboard(monitor_metrics, global_step=epoch)
 
             epoch_time = time.time() - start_time
-            logger.info('trained epoch {}: took {} sec. ({} train / {} val)'.format(
+            logger.info('trained epoch {}: took {:.2f} s ({:.2f} s train / {:.2f} s val)'.format(
                 epoch, epoch_time, train_time, epoch_time-train_time))
             batch = next(batch_gen['val_sampling'])
             results_dict = net.train_forward(batch, is_validation=True)

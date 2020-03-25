@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 
-import os
+import os, time
 import numpy as np
 import pandas as pd
 import pickle
@@ -74,7 +74,7 @@ def generate_experiment(exp_name, n_train_images, n_test_images, mode, class_dia
     info += [[test_dir, six, foreground_margin, class_diameters, mode] for six in range(n_test_images)]
 
     print('starting creating {} images'.format(len(info)))
-    pool = Pool(processes=12)
+    pool = Pool(processes=os.cpu_count()-1)
     pool.map(multi_processing_create_image, info, chunksize=1)
     pool.close()
     pool.join()
@@ -96,12 +96,17 @@ def aggregate_meta_info(exp_dir):
 
 
 if __name__ == '__main__':
-
+    stime = time.time()
     cf = cf.configs()
 
-    generate_experiment('donuts_shape_threads', n_train_images=1500, n_test_images=1000, mode='donuts_shape')
+    generate_experiment('donuts_shape', n_train_images=1500, n_test_images=1000, mode='donuts_shape')
     generate_experiment('donuts_pattern', n_train_images=1500, n_test_images=1000, mode='donuts_pattern')
     generate_experiment('circles_scale', n_train_images=1500, n_test_images=1000, mode='circles_scale', class_diameters=(19, 20))
 
+
+    mins, secs = divmod((time.time() - stime), 60)
+    h, mins = divmod(mins, 60)
+    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    print("{} total runtime: {}".format(os.path.split(__file__)[1], t))
 
 

@@ -739,9 +739,9 @@ def roi_align_3d_numpy(input: np.ndarray, rois, output_size: tuple,
                                 for j in range(sampling_ratio_w):
                                     for k in range(sampling_ratio_d):
                                         loc_ijk = [
-                                            y1 + bin_iy * bin_height + (i + 0.5) * ((bin_height -1) / sampling_ratio_h),
-                                            x1 + bin_ix * bin_width + (j + 0.5) * ((bin_width -1) / sampling_ratio_w),
-                                            z1 + bin_iz * bin_depth + (k + 0.5) * ((bin_depth -1) / sampling_ratio_d)]
+                                            y1 + bin_iy * bin_height + (i + 0.5) * (bin_height / sampling_ratio_h),
+                                            x1 + bin_ix * bin_width + (j + 0.5) * (bin_width / sampling_ratio_w),
+                                            z1 + bin_iz * bin_depth + (k + 0.5) * (bin_depth / sampling_ratio_d)]
                                         # print("loc_ijk", loc_ijk)
                                         if not (np.any([c < -1.0 for c in loc_ijk]) or loc_ijk[0] > input.shape[2] or
                                                 loc_ijk[1] > input.shape[3] or loc_ijk[2] > input.shape[4]):

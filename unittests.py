@@ -238,10 +238,12 @@ class CheckRoIAlignImplementation(unittest.TestCase):
         ra_object = self.ra_ext.RoIAlign(output_size=pool_size, spatial_scale=1.,)
         aligned_3d = ra_object(fmap_3d, boxes_3d)
 
-        expected_res = torch.tensor([[[[10.5000, 12.5000],
-                                       [22.5000, 24.5000]]]]).cuda()
-        expected_res_3d = torch.tensor([[[[[10.5000],[12.5000]],
-                                          [[22.5000],[24.5000]]]]]).cuda()
+        # expected_res = torch.tensor([[[[10.5000, 12.5000], # this would be with an alternative grid-point setting
+        #                                [22.5000, 24.5000]]]]).cuda()
+        expected_res = torch.tensor([[[[14., 16.],
+                                       [26., 28.]]]]).cuda()
+        expected_res_3d = torch.tensor([[[[[14.],[16.]],
+                                          [[26.],[28.]]]]]).cuda()
         assert torch.all(aligned==expected_res), "2D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(aligned, expected_res)
         assert torch.all(aligned_3d==expected_res_3d), "3D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(aligned_3d, expected_res_3d)
 

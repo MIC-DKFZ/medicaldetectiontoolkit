@@ -39,7 +39,7 @@ setup(name='medicaldetectiontoolkit',
       version='0.0.1',
       url="https://github.com/MIC-DKFZ/medicaldetectiontoolkit",
       author='P. Jaeger, G. Ramien, MIC at DKFZ Heidelberg',
-      licence="Apache 2.0",
+      license="Apache 2.0",
       description="Medical Object-Detection Toolkit.",
       classifiers=[
           "Development Status :: 4 - Beta",

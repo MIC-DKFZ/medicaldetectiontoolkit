@@ -8,5 +8,6 @@
 *.jpg
 __pycache__/*
 .idea/*
+*.so
 
 !/assets/*

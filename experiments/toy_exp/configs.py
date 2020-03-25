@@ -28,7 +28,7 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/mnt/HDD2TB/Documents/data/mdt_toy'
+        self.root_dir = '/home/gregor/datasets/toy_mdt'
 
         #########################
         #         I/O           #
@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_unet'
+        self.model = 'mrcnn'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
