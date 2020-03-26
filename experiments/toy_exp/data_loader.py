@@ -287,16 +287,22 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
 if __name__=="__main__":
     import utils.exp_utils as utils
-    from configs import configs
 
     total_stime = time.time()
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
 
-
-    cf = configs()
     logger = utils.get_logger("dev")
     batch_gen = get_train_generators(cf, logger)
 
     train_batch = next(batch_gen["train"])
+    pids = []
+    total = 100
+    for i in range(total):
+        print("\r producing batch {}/{}.".format(i, total), end="", flush=True)
+        train_batch = next(batch_gen["train"])
+        pids.append(train_batch["pid"])
+
 
 
     mins, secs = divmod((time.time() - total_stime), 60)

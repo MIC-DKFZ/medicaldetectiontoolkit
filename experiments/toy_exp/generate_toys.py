@@ -18,16 +18,16 @@ import os, time
 import numpy as np
 import pandas as pd
 import pickle
+import argparse
 from multiprocessing import Pool
-import configs as cf
 
 def multi_processing_create_image(inputs):
 
 
-    out_dir, six, foreground_margin, class_diameters, mode = inputs
-    print('proceesing {} {}'.format(out_dir, six))
+    out_dir, six, foreground_margin, class_diameters, mode, noisy_bg = inputs
+    print('processing {} {}'.format(out_dir, six))
 
-    img = np.random.rand(320, 320)
+    img = np.random.rand(320, 320) if noisy_bg else np.zeros((320, 320))
     seg = np.zeros((320, 320)).astype('uint8')
     center_x = np.random.randint(foreground_margin, img.shape[0] - foreground_margin)
     center_y = np.random.randint(foreground_margin, img.shape[1] - foreground_margin)
@@ -40,11 +40,11 @@ def multi_processing_create_image(inputs):
                 seg[y][x] = 1
 
     if 'donuts' in mode:
-        whole_diameter = 4
+        hole_diameter = 12
         if class_id == 1:
             for y in range(img.shape[0]):
                 for x in range(img.shape[0]):
-                    if ((x - center_x) ** 2 + (y - center_y) ** 2 - whole_diameter ** 2) < 0:
+                    if ((x - center_x) ** 2 + (y - center_y) ** 2 - hole_diameter ** 2) < 0:
                         img[y][x] -= 0.2
                         if mode == 'donuts_shape':
                             seg[y][x] = 0
@@ -57,25 +57,24 @@ def multi_processing_create_image(inputs):
         pickle.dump([out_path, class_id, str(six)], handle)
 
 
-def generate_experiment(exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20)):
+def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20)):
 
     train_dir = os.path.join(cf.root_dir, exp_name, 'train')
     test_dir = os.path.join(cf.root_dir, exp_name, 'test')
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
-    if not os.path.exists(test_dir):
-        os.makedirs(test_dir)
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
 
     # enforced distance between object center and image edge.
-    foreground_margin = np.max(class_diameters) // 2
+    foreground_margin = int(np.ceil(np.max(class_diameters) / 1.25))
+    noisy_bg = cf.pp_noisy_bg if hasattr(cf, "pp_noisy_bg") else True
 
     info = []
-    info += [[train_dir, six, foreground_margin, class_diameters, mode] for six in range(n_train_images)]
-    info += [[test_dir, six, foreground_margin, class_diameters, mode] for six in range(n_test_images)]
+    info += [[train_dir, six, foreground_margin, class_diameters, mode, noisy_bg] for six in range(n_train_images)]
+    info += [[test_dir, six, foreground_margin, class_diameters, mode, noisy_bg] for six in range(n_test_images)]
 
-    print('starting creating {} images'.format(len(info)))
+    print('starting creation of {} images'.format(len(info)))
     pool = Pool(processes=os.cpu_count()-1)
-    pool.map(multi_processing_create_image, info, chunksize=1)
+    pool.map(multi_processing_create_image, info)
     pool.close()
     pool.join()
 
@@ -97,11 +96,30 @@ def aggregate_meta_info(exp_dir):
 
 if __name__ == '__main__':
     stime = time.time()
-    cf = cf.configs()
+    import sys
+    sys.path.append("../..")
+    import utils.exp_utils as utils
 
-    generate_experiment('donuts_shape', n_train_images=1500, n_test_images=1000, mode='donuts_shape')
-    generate_experiment('donuts_pattern', n_train_images=1500, n_test_images=1000, mode='donuts_pattern')
-    generate_experiment('circles_scale', n_train_images=1500, n_test_images=1000, mode='circles_scale', class_diameters=(19, 20))
+    parser = argparse.ArgumentParser()
+    mode_choices = ['donuts_shape', 'donuts_pattern', 'circles_scale']
+    parser.add_argument('-m', '--modes', nargs='+', type=str, default=mode_choices, choices=mode_choices)
+    parser.add_argument('--n_train', type=int, default=1500, help="Nr. of train images to generate.")
+    parser.add_argument('--n_test', type=int, default=1000, help="Nr. of test images to generate.")
+    args = parser.parse_args()
+
+
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
+
+    class_diameters = {
+        'donuts_shape': (20, 20),
+        'donuts_pattern': (20, 20),
+        'circles_scale': (19, 20)
+    }
+
+    for mode in args.modes:
+        generate_experiment(cf, mode, n_train_images=args.n_train, n_test_images=args.n_test, mode=mode,
+                            class_diameters=class_diameters[mode])
 
 
     mins, secs = divmod((time.time() - stime), 60)

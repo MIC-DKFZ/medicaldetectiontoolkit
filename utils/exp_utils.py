@@ -225,7 +225,7 @@ class ModelSelector:
         non_nan_scores = np.mean(np.array([[0 if (ii is None or np.isnan(ii)) else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
         epochs_scores = [ii for ii in non_nan_scores[1:]]
         # ranking of epochs according to model_selection_criterion
-        epoch_ranking = np.argsort(epochs_scores)[::-1] + 1 #epochs start at 1
+        epoch_ranking = np.argsort(epochs_scores, kind="stable")[::-1] + 1 #epochs start at 1
         # if set in configs, epochs < min_save_thresh are discarded from saving process.
         epoch_ranking = epoch_ranking[epoch_ranking >= self.cf.min_save_thresh]
 

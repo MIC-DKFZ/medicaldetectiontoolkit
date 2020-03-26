@@ -49,7 +49,7 @@ class DefaultConfigs:
         self.seed = 0
 
         #number of threads for multithreaded batch generation.
-        self.n_workers = 6
+        self.n_workers = os.cpu_count() - 1
 
         # if True, segmentation losses learn all categories, else only foreground vs. background.
         self.class_specific_seg_flag = False

@@ -29,6 +29,7 @@ class configs(DefaultConfigs):
         #########################
 
         self.root_dir = '/home/gregor/datasets/toy_mdt'
+        self.pp_noisy_bg = False
 
         #########################
         #         I/O           #
@@ -51,7 +52,6 @@ class configs(DefaultConfigs):
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
         toy_mode = 'donuts_shape'
-
 
         # path to preprocessed data.
         self.input_df_name = 'info_df.pickle'
@@ -115,8 +115,8 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 100
-        self.num_train_batches = 100 if self.dim == 2 else 140
+        self.num_epochs = 16
+        self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
         self.do_validation = True
@@ -133,8 +133,8 @@ class configs(DefaultConfigs):
         #########################
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
-        self.save_n_models = 5
-        self.test_n_epochs = 5
+        self.save_n_models = 2
+        self.test_n_epochs = 2
 
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
         self.min_save_thresh = 0 if self.dim == 2 else 0
@@ -236,7 +236,7 @@ class configs(DefaultConfigs):
         self.return_masks_in_test = False
 
         # set number of proposal boxes to plot after each epoch.
-        self.n_plot_rpn_props = 5 if self.dim == 2 else 30
+        self.n_plot_rpn_props = 0 if self.dim == 2 else 0
 
         # number of classes for head networks: n_foreground_classes + 1 (background)
         self.head_classes = 3
@@ -258,7 +258,7 @@ class configs(DefaultConfigs):
         self.n_rpn_features = 512 if self.dim == 2 else 128
 
         # anchor ratios and strides per position in feature maps.
-        self.rpn_anchor_ratios = [0.5, 1, 2]
+        self.rpn_anchor_ratios = [0.5, 1., 2.]
         self.rpn_anchor_stride = 1
 
         # Threshold for first stage (RPN) non-maximum suppression (NMS):  LOWER == HARDER SELECTION
