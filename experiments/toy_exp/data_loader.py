@@ -302,7 +302,7 @@ if __name__=="__main__":
         print("\r producing batch {}/{}.".format(i, total), end="", flush=True)
         train_batch = next(batch_gen["train"])
         pids.append(train_batch["pid"])
-
+    print()
 
 
     mins, secs = divmod((time.time() - total_stime), 60)
