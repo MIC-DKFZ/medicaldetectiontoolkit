@@ -159,6 +159,7 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
             cf.backbone_path = os.path.join(exp_path, 'backbone.py')
         else:
             # this case overwrites settings files in exp dir, i.e., default_configs, configs, backbone, model
+            print("exp path", exp_path)
             os.makedirs(exp_path, exist_ok=True)
             # run training with source code info and copy snapshot of model to exp_dir for later testing (overwrite scripts if exp_dir already exists.)
             subprocess.call('cp {} {}'.format('default_configs.py', os.path.join(exp_path, 'default_configs.py')),

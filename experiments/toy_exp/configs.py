@@ -62,7 +62,7 @@ class configs(DefaultConfigs):
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            pp_root_dir = '/path/to/data'
+            pp_root_dir = '/datasets/datasets_ramien/toy_mdt'
             self.pp_name = os.path.join(toy_mode, 'train')
             self.pp_data_path = os.path.join(pp_root_dir, self.pp_name)
             self.pp_test_name = os.path.join(toy_mode, 'test')

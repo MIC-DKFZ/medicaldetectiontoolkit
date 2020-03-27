@@ -40,7 +40,8 @@ source mdt/bin/activate
 python setup.py install
 ```
 This framework uses two custom mixed C++/CUDA extensions: Non-maximum suppression (NMS) and RoIAlign. Both are adapted from the original pytorch extensions (under torchvision.ops.boxes and ops.roialign).
-The extensions are automatically compiled from the provided source files under RegRCNN/custom_extensions with above setup.py.
+The extensions are automatically compiled from the provided source files under RegRCNN/custom_extensions with above setup.py. 
+Your system is required to have a compatible CUDA compiler (nvcc).
 Note: If you'd like to import the raw extensions (not the wrapper modules), be sure to import torch first.
 
 Please note, if you attempt to install the framework via pip, you need to:

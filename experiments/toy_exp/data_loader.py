@@ -105,7 +105,7 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         pp_name = cf.pp_name
     if cf.server_env:
         copy_data = True
-        target_dir = os.path.join('/ssd', cf.slurm_job_id, pp_name)
+        target_dir = os.path.join(cf.data_dest, pp_name)
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
@@ -268,8 +268,6 @@ class PatientBatchIterator(SlimDataLoaderBase):
 
         return batch_2D
 
-
-
 def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
 
@@ -278,11 +276,11 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
         for pid in pids:
             handle.write('{}.npy\n'.format(pid))
 
-    subprocess.call('rsync -av --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
+    subprocess.call('rsync -ahv --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
         source_dir, target_dir), shell=True)
     # dutils.unpack_dataset(target_dir)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
+    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
 if __name__=="__main__":
