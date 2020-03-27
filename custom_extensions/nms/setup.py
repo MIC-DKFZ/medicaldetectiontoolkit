@@ -15,8 +15,11 @@ from torch.utils import cpp_extension
 
 dir_ = Path(os.path.dirname(sys.argv[0]))
 
+sources = [str(dir_/'src/nms_interface.cpp'), str(dir_/'src/nms.cu')]
+
 setup(name='nms_extension',
-      ext_modules=[cpp_extension.CUDAExtension('nms_extension', [str(dir_/'src/nms_interface.cpp'), str(dir_/'src/nms.cu')])],
+      ext_modules=[cpp_extension.CUDAExtension(
+            'nms_extension', sources
+      )],
       cmdclass={'build_ext': cpp_extension.BuildExtension}
       )
-

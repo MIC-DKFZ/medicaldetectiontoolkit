@@ -43,12 +43,14 @@ This framework uses two custom mixed C++/CUDA extensions: Non-maximum suppressio
 The extensions are automatically compiled from the provided source files under RegRCNN/custom_extensions with above setup.py.
 Note: If you'd like to import the raw extensions (not the wrapper modules), be sure to import torch first.
 
-Alternatively, you may install the framework via pip by replacing the last line above (python setup.py install) by:
-```
-pip install .
-pip install -e ./custom_extensions/nms
-pip install -e ./custom_extensions/roi_align
-```
+Please note, if you attempt to install the framework via pip, you need to:
+1. instead of executing above line `python setup.py install` execute `pip install .`,
+2. manually install the custom extensions. This can be done from source by
+    ```
+    pip install ./custom_extensions/nms
+    pip install ./custom_extensions/roi_align/2D
+    pip install ./custom_extensions/roi_align/3D
+    ```
 
 ## Prepare the Data
 This framework is meant for you to be able to train models on your own data sets. 
