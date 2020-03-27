@@ -57,7 +57,7 @@ def multi_processing_create_image(inputs):
         pickle.dump([out_path, class_id, str(six)], handle)
 
 
-def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20)):
+def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20), noisy_bg=False):
 
     train_dir = os.path.join(cf.root_dir, exp_name, 'train')
     test_dir = os.path.join(cf.root_dir, exp_name, 'test')
@@ -66,7 +66,6 @@ def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class
 
     # enforced distance between object center and image edge.
     foreground_margin = int(np.ceil(np.max(class_diameters) / 1.25))
-    noisy_bg = cf.pp_noisy_bg if hasattr(cf, "pp_noisy_bg") else True
 
     info = []
     info += [[train_dir, six, foreground_margin, class_diameters, mode, noisy_bg] for six in range(n_train_images)]
@@ -103,6 +102,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     mode_choices = ['donuts_shape', 'donuts_pattern', 'circles_scale']
     parser.add_argument('-m', '--modes', nargs='+', type=str, default=mode_choices, choices=mode_choices)
+    parser.add_argument('--noise', action='store_true', help="if given, add noise to the sample bg.")
     parser.add_argument('--n_train', type=int, default=1500, help="Nr. of train images to generate.")
     parser.add_argument('--n_test', type=int, default=1000, help="Nr. of test images to generate.")
     args = parser.parse_args()
@@ -118,8 +118,8 @@ if __name__ == '__main__':
     }
 
     for mode in args.modes:
-        generate_experiment(cf, mode, n_train_images=args.n_train, n_test_images=args.n_test, mode=mode,
-                            class_diameters=class_diameters[mode])
+        generate_experiment(cf, mode + ("_noise" if args.noise else ""), n_train_images=args.n_train, n_test_images=args.n_test, mode=mode,
+                            class_diameters=class_diameters[mode], noisy_bg=args.noise)
 
 
     mins, secs = divmod((time.time() - stime), 60)

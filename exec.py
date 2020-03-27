@@ -37,6 +37,10 @@ def train(logger):
 
     net = model.net(cf, logger).cuda()
     optimizer = torch.optim.Adam(net.parameters(), lr=cf.learning_rate[0], weight_decay=cf.weight_decay)
+    if cf.dynamic_lr_scheduling:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode, factor=cf.lr_decay_factor,
+                                                               patience=cf.scheduling_patience)
+
     model_selector = utils.ModelSelector(cf, logger)
     train_evaluator = Evaluator(cf, logger, mode='train')
     val_evaluator = Evaluator(cf, logger, mode=cf.val_mode)
@@ -56,9 +60,6 @@ def train(logger):
     for epoch in range(starting_epoch, cf.num_epochs + 1):
 
         logger.info('starting training epoch {}'.format(epoch))
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = cf.learning_rate[epoch - 1]
-
         start_time = time.time()
 
         net.train()
@@ -111,6 +112,12 @@ def train(logger):
             logger.info('plotting predictions from validation sampling.')
             plot_batch_prediction(batch, results_dict, cf)
 
+        # -------------- scheduling -----------------
+        if cf.dynamic_lr_scheduling:
+            scheduler.step(monitor_metrics["val"][cf.scheduling_criterion][-1])
+        else:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = cf.learning_rate[epoch-1]
 
 def test(logger):
     """

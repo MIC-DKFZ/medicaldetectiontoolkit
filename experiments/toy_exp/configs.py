@@ -29,7 +29,6 @@ class configs(DefaultConfigs):
         #########################
 
         self.root_dir = '/home/gregor/datasets/toy_mdt'
-        self.pp_noisy_bg = False
 
         #########################
         #         I/O           #
@@ -40,18 +39,18 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_unet'
+        self.model = 'detection_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
         self.hold_out_test_set = True
-        self.n_train_data = 1000
+        self.n_train_data = 2500
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape'
+        toy_mode = 'donuts_shape_noise'
 
         # path to preprocessed data.
         self.input_df_name = 'info_df.pickle'
@@ -106,7 +105,7 @@ class configs(DefaultConfigs):
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 0
+        self.weight_decay = 1e-4
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
         self.weight_init = None
@@ -115,7 +114,7 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 16
+        self.num_epochs = 11
         self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
@@ -127,6 +126,13 @@ class configs(DefaultConfigs):
             self.max_val_patients = None  # if 'None' iterates over entire val_set once.
         if self.val_mode == 'val_sampling':
             self.num_val_batches = 50
+
+        # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
+        self.dynamic_lr_scheduling = True
+        self.lr_decay_factor = 0.5
+        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 2400)
+        self.scheduling_criterion = 'malignant_ap'
+        self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
         #########################
         #   Testing / Plotting  #
