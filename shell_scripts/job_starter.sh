@@ -110,7 +110,7 @@ exp_dir=${exp_parent_dir}/${exp_name}
 source_dl="module load python/3.7.0; module load gcc/7.2.0; source ${root_dir}/.virtualenvs/mdt/bin/activate;"
 
 # TODO as long as no fix available: this script needs to be started directly from the prep node. :/ would be nice if (most importantly
-# 'module ...' would also work over ssh, but somehow some commands are not availabe over the ssh-induced shell (even when using it as interactive).
+# 'module ...') would also work over ssh, but somehow some commands are not availabe over the ssh-induced shell (even when using it as interactive).
 eval ${source_dl}
 
 # ssh: (not working)
