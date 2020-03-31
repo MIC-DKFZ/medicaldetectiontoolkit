@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'detection_unet'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -62,7 +62,7 @@ class configs(DefaultConfigs):
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            pp_root_dir = '/datasets/datasets_ramien/toy_mdt'
+            pp_root_dir = '/datasets/datasets_ramien/toy_exp/data'
             self.pp_name = os.path.join(toy_mode, 'train')
             self.pp_data_path = os.path.join(pp_root_dir, self.pp_name)
             self.pp_test_name = os.path.join(toy_mode, 'test')
@@ -139,8 +139,8 @@ class configs(DefaultConfigs):
         #########################
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
-        self.save_n_models = 2
-        self.test_n_epochs = 2
+        self.save_n_models = 5
+        self.test_n_epochs = 5
 
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
         self.min_save_thresh = 0 if self.dim == 2 else 0

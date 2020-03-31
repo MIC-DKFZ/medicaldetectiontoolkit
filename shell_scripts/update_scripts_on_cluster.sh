@@ -9,7 +9,7 @@ serverroot=${server}:/home/ramien
 codep=${rootp}/mdt-public
 server_codep=${serverroot}/mdt-public
 
-rsync -avhe "ssh -i /home/gregor/.ssh/id_rsa" ${rootp}/mdt-public/shell_scripts/cluster_runner_meddec.sh ${rootp}/mdt-public/shell_scripts/job_starter.sh ${server_codep}
+rsync -avhe "ssh -i /home/gregor/.ssh/id_rsa" ${rootp}/mdt-public/shell_scripts/dummy_runner.sh ${rootp}/mdt-public/shell_scripts/cluster_runner_meddec.sh ${rootp}/mdt-public/shell_scripts/job_starter.sh ${server_codep}
 rsync -avhe "ssh -i /home/gregor/.ssh/id_rsa" ${rootp}/environmental/job_scheduler,cluster/bpeek_wrapper.sh ${serverroot}
 
 # add/remove --include 'custom_extension/**/*.whl' for compiled c++/CUDA exts
