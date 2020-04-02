@@ -30,7 +30,7 @@ pandas==0.25.3
 parso==0.5.2
 pexpect==4.7.0
 pickleshare==0.7.5
-Pillow==6.2.1
+Pillow==7.1.0
 prompt-toolkit==3.0.2
 protobuf==3.11.2
 ptyprocess==0.6.0
