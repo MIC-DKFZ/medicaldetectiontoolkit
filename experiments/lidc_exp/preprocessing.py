@@ -20,7 +20,8 @@ After applying preprocessing, images are saved as numpy arrays and the meta info
 as a line in the dataframe saved as info_df.pickle.
 '''
 
-import os
+import os, sys
+from pathlib import Path
 import SimpleITK as sitk
 import numpy as np
 from multiprocessing import Pool
@@ -30,6 +31,8 @@ from skimage.transform import resize
 import subprocess
 import pickle
 
+PROJECT_ROOT = Path(__file__).absolute().parent.parent.parent
+sys.path.append(str(PROJECT_ROOT))
 import utils.exp_utils as utils
 
 
