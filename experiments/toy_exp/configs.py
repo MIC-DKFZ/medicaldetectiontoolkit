@@ -50,7 +50,7 @@ class configs(DefaultConfigs):
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape_noise'
+        toy_mode = 'donuts_shape_noise_dia4'
 
         # path to preprocessed data.
         self.input_df_name = 'info_df.pickle'
