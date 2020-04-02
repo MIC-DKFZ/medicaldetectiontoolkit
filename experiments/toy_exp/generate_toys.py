@@ -40,7 +40,7 @@ def multi_processing_create_image(inputs):
                 seg[y][x] = 1
 
     if 'donuts' in mode:
-        hole_diameter = 12
+        hole_diameter = 4
         if class_id == 1:
             for y in range(img.shape[0]):
                 for x in range(img.shape[0]):
