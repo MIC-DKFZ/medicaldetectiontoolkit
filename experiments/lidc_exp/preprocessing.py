@@ -30,8 +30,7 @@ from skimage.transform import resize
 import subprocess
 import pickle
 
-import configs
-cf = configs.configs()
+import utils.exp_utils as utils
 
 
 
@@ -128,13 +127,16 @@ def aggregate_meta_info(exp_dir):
 
 if __name__ == "__main__":
 
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
+
     paths = [os.path.join(cf.raw_data_dir, ii) for ii in os.listdir(cf.raw_data_dir)]
 
     if not os.path.exists(cf.pp_dir):
         os.mkdir(cf.pp_dir)
 
-    pool = Pool(processes=12)
-    p1 = pool.map(pp_patient, enumerate(paths), chunksize=1)
+    pool = Pool(processes=os.cpu_count())
+    p1 = pool.map(pp_patient, enumerate(paths))
     pool.close()
     pool.join()
     # for i in enumerate(paths):
