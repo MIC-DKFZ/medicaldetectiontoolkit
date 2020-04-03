@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_unet'
+        self.model = 'detection_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -50,7 +50,7 @@ class configs(DefaultConfigs):
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape_noise_dia4'
+        toy_mode = 'donuts_shape_noise'
 
         # path to preprocessed data.
         self.input_df_name = 'info_df.pickle'
