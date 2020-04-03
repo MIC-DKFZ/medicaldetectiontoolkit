@@ -50,17 +50,17 @@ class configs(DefaultConfigs):
         self.select_prototype_subset = None
 
         # path to preprocessed data.
-        self.pp_name = 'lidc_preprocessed_for_G2'
+        self.pp_name = 'lidc_mdt'
         self.input_df_name = 'info_df.pickle'
-        self.pp_data_path = '/mnt/HDD2TB/Documents/data/lidc/{}'.format(self.pp_name)
+        self.pp_data_path = '/media/gregor/HDD2TB/data/lidc/{}'.format(self.pp_name)
         self.pp_test_data_path = self.pp_data_path #change if test_data in separate folder.
 
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            self.pp_name = 'pp_fg_slices'
+            self.pp_name = 'lidc_mdt_npz'
             self.crop_name = 'pp_fg_slices_packed'
-            self.pp_data_path = '/path/to/preprocessed/data/{}/{}'.format(self.pp_name, self.crop_name)
+            self.pp_data_path = '/datasets/datasets_ramien/lidc_exp/data/{}'.format(self.pp_name)
             self.pp_test_data_path = self.pp_data_path
             self.select_prototype_subset = None
 

@@ -135,7 +135,7 @@ if __name__ == '__main__':
                         help='path to experiment dir. will be created if non existent.')
     parser.add_argument('--server_env', default=False, action='store_true',
                         help='change IO settings to deploy models on a cluster.')
-    parser.add_argument('--slurm_job_id', type=str, default=None, help='job scheduler info')
+    parser.add_argument('--data_dest', type=str, default=None, help="path to final data folder if different from config.")
     parser.add_argument('--use_stored_settings', default=False, action='store_true',
                         help='load configs from existing exp_dir instead of source dir. always done for testing, '
                              'but can be set to true to do the same for training. useful in job scheduler environment, '
@@ -160,7 +160,7 @@ if __name__ == '__main__':
             cf.test_n_epochs =  cf.save_n_models
             cf.max_test_patients = 1
 
-        cf.slurm_job_id = args.slurm_job_id
+        cf.data_dest = args.data_dest
         model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         if folds is None:
@@ -189,7 +189,7 @@ if __name__ == '__main__':
             folds = [0,1]
             cf.test_n_epochs =  1; cf.max_test_patients = 1
 
-        cf.slurm_job_id = args.slurm_job_id
+        cf.data_dest = args.data_dest
         model = utils.import_module('model', cf.model_path)
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         if folds is None:
