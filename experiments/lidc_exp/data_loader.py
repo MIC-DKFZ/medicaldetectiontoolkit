@@ -124,7 +124,7 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         pp_name = cf.pp_name
     if cf.server_env:
         copy_data = True
-        target_dir = os.path.join(cf.data_dest, pp_name, cf.crop_name)
+        target_dir = os.path.join(cf.data_dest, pp_name)
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
