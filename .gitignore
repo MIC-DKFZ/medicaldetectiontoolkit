@@ -1,3 +1,4 @@
+shell_scripts/*
 *.pyc
 *.pickle
 *.ipynb_checkpoints*
