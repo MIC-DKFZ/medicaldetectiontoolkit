@@ -128,6 +128,7 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
+            logger.info("data source dir: {}. copy data? {}".format(cf.data_source_dir, copy_data))
             subprocess.call('rsync -av {} {}'.format(
                 os.path.join(cf.data_source_dir, cf.input_df_name), os.path.join(target_dir, cf.input_df_name)), shell=True)
             logger.info('created target dir and info df at {}'.format(os.path.join(target_dir, cf.input_df_name)))

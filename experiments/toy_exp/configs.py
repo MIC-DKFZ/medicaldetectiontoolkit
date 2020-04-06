@@ -50,7 +50,7 @@ class configs(DefaultConfigs):
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape'
+        toy_mode = 'donuts_shape_nonoise_dia12'
 
 
         # path to preprocessed data.
@@ -63,7 +63,7 @@ class configs(DefaultConfigs):
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            pp_root_dir = '/path/to/data'
+            pp_root_dir = '/datasets/datasets_ramien/toy_exp/data'
             self.pp_name = os.path.join(toy_mode, 'train')
             self.pp_data_path = os.path.join(pp_root_dir, self.pp_name)
             self.pp_test_name = os.path.join(toy_mode, 'test')

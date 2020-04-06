@@ -38,7 +38,7 @@ class DefaultConfigs:
         self.model_path = 'models/{}.py'.format(self.model)
 
         if server_env:
-            self.source_dir = '/home/jaegerp/code/mamma_code/medicaldetectiontoolkit'
+            self.source_dir = '/home/ramien/mdt-public'
 
 
         #########################
