@@ -255,7 +255,7 @@ def get_case_identifiers(folder):
 
 
 def convert_to_npy(npz_file):
-    identifier = os.path.split(npz_file)[0][:-4]
+    identifier = os.path.split(npz_file)[1][:-4]
     if not os.path.isfile(npz_file[:-4] + ".npy"):
         a = np.load(npz_file)[identifier]
         np.save(npz_file[:-4] + ".npy", a)

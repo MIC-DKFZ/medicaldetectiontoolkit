@@ -47,7 +47,7 @@ class configs(DefaultConfigs):
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
         # int [0 < dataset_size]. select n patients from dataset for prototyping. If None, all data is used.
-        self.select_prototype_subset = None
+        self.select_prototype_subset = 100
 
         # path to preprocessed data.
         self.pp_name = 'lidc_mdt'

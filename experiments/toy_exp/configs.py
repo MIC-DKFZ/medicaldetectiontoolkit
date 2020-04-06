@@ -46,7 +46,7 @@ class configs(DefaultConfigs):
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
         self.hold_out_test_set = True
-        self.n_train_data = 1000
+        self.n_train_data = 2500
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
@@ -115,8 +115,8 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 100
-        self.num_train_batches = 200 if self.dim == 2 else 200
+        self.num_epochs = 24
+        self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
         self.do_validation = True

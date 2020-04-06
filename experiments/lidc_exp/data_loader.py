@@ -128,7 +128,6 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
-            logger.info("data source dir: {}. copy data? {}".format(cf.data_source_dir, copy_data))
             subprocess.call('rsync -av {} {}'.format(
                 os.path.join(cf.data_source_dir, cf.input_df_name), os.path.join(target_dir, cf.input_df_name)), shell=True)
             logger.info('created target dir and info df at {}'.format(os.path.join(target_dir, cf.input_df_name)))
@@ -455,7 +454,7 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
     subprocess.call('rsync -av --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
         source_dir, target_dir), shell=True)
-    dutils.unpack_dataset(target_dir)
+    dutils.unpack_dataset(target_dir, threads=16)
     copied_files = os.listdir(target_dir)
     logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
