@@ -126,7 +126,7 @@ class configs(DefaultConfigs):
         # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
         self.dynamic_lr_scheduling = True
         self.lr_decay_factor = 0.5
-        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 2400)
+        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 6000)
         self.scheduling_criterion = 'malignant_ap'
         self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 

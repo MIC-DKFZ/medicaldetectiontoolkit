@@ -289,6 +289,50 @@ class CheckRoIAlignImplementation(unittest.TestCase):
 
         return
 
+class VerifyFoldSplits(unittest.TestCase):
+    """ Check, for a single fold_ids file, i.e., for a single experiment, if the assigned folds (assignment of data
+        identifiers) is actually incongruent. No overlaps between folds are allowed for a correct cross validation.
+    """
+    @staticmethod
+    def verify_fold_ids(splits):
+        """
+        Splits: list (n_splits). Each element: list (4) with: 0 == array of train ids, 1 == arr of val ids,
+        2 == arr of test ids, 3 == int of fold ix.
+        """
+
+        for f_ix, split_settings in enumerate(splits):
+            split_ids, fold_ix = split_settings[:3], split_settings[3]
+            assert f_ix == fold_ix
+
+            # check fold ids within their folds
+            for i, ids1 in enumerate(split_ids):
+                for j, ids2 in enumerate(split_ids):
+                    if j > i:
+                        inter = np.intersect1d(ids1, ids2)
+                        if len(inter) > 0:
+                            raise Exception("Fold {}: Split {} and {} intersect by pids {}".format(fold_ix, i, j, inter))
+
+            # check val and test ids across folds
+            val_ids = split_ids[1]
+            test_ids = split_ids[2]
+            for other_f_ix in range(f_ix + 1, len(splits)):
+                other_val_ids = splits[other_f_ix][1]
+                other_test_ids = splits[other_f_ix][2]
+                inter_val = np.intersect1d(val_ids, other_val_ids)
+                inter_test = np.intersect1d(test_ids, other_test_ids)
+                if len(inter_test) > 0:
+                    raise Exception("Folds {} and {}: Test splits intersect by pids {}".format(f_ix, other_f_ix, inter_test))
+                if len(inter_val) > 0:
+                    raise Exception(
+                        "Folds {} and {}: Val splits intersect by pids {}".format(f_ix, other_f_ix, inter_val))
+
+    def test(self):
+        exp_dir = "/home/gregor/networkdrives/E132-Cluster-Projects/lidc_exp/experiments/042/retinau2d"
+        check_file = os.path.join(exp_dir, 'fold_ids.pickle')
+        with open(check_file, 'rb') as handle:
+            splits = pickle.load(handle)
+        self.verify_fold_ids(splits)
+
 
 if __name__=="__main__":
     stime = time.time()

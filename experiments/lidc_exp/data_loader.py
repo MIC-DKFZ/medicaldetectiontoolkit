@@ -51,13 +51,14 @@ def get_train_generators(cf, logger):
     all_data = load_dataset(cf, logger)
     all_pids_list = np.unique([v['pid'] for (k, v) in all_data.items()])
 
-    if not cf.created_fold_id_pickle:
+    splits_file = os.path.join(cf.exp_dir, 'fold_ids.pickle')
+    if not os.path.exists(splits_file) and not cf.created_fold_id_pickle:
         fg = dutils.fold_generator(seed=cf.seed, n_splits=cf.n_cv_splits, len_data=len(all_pids_list)).get_fold_names()
-        with open(os.path.join(cf.exp_dir, 'fold_ids.pickle'), 'wb') as handle:
+        with open(splits_file, 'wb') as handle:
             pickle.dump(fg, handle)
         cf.created_fold_id_pickle = True
     else:
-        with open(os.path.join(cf.exp_dir, 'fold_ids.pickle'), 'rb') as handle:
+        with open(splits_file, 'rb') as handle:
             fg = pickle.load(handle)
 
     train_ix, val_ix, test_ix, _ = fg[cf.fold]
@@ -456,7 +457,7 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
         source_dir, target_dir), shell=True)
     dutils.unpack_dataset(target_dir)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
+    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
 
