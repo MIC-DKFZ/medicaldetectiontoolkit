@@ -124,7 +124,7 @@ class CheckNMSImplementation(unittest.TestCase):
         scores = torch.from_numpy(scores).type(torch.float32)
         if dim == 2:
             """need to wait until next pytorch release where they fixed nms on cpu (currently they have >= where it
-            needs to be >.
+            needs to be >.)
             """
             # keep_ops = tv.ops.nms(boxes, scores, threshold)
             # self.assert_res_equality(keep_numpy, keep_ops, boxes, scores, tolerance=0, names=["np", "ops"])
@@ -135,9 +135,36 @@ class CheckNMSImplementation(unittest.TestCase):
         keep = self.nms_ext.nms(boxes, scores, threshold)
         self.assert_res_equality(keep_numpy, keep, boxes, scores, tolerance=0, names=["np", "cuda"])
 
+    def manual_example(self):
+        """
+        100 x 221 (y, x) image. 5 overlapping boxes, 4 of the same class, 3 of them overlapping above threshold.
+
+        """
+        threshold = 0.3
+        boxes = torch.tensor([
+            [20, 30, 80, 130], #0 reference (needs to have highest score)
+            [30, 40, 70, 120], #1 IoU 0.35
+            [10, 50, 90,  80], #2 IoU 0.11
+            [40, 20, 75, 135], #3 IoU 0.34
+            [30, 40, 70, 120], #4 IoU 0.35 again but with lower score
+        ]).cuda().float()
+
+        scores = torch.tensor([0.71, 0.94, 1.0, 0.82, 0.11]).cuda()
+
+        # expected: keep == [1, 2]
+        keep = self.nms_ext.nms(boxes, scores, threshold)
+
+        diff = np.setdiff1d(keep.cpu().numpy(), [1,2])
+        assert len(diff) == 0, "expected: {}, received: {}.".format([1,2], keep)
+
+
+
     def test(self, n_cases=200, box_count=30, threshold=0.5):
         # dynamically import module so that it doesn't affect other tests if import fails
         self.nms_ext = utils.import_module("nms_ext", 'custom_extensions/nms/nms.py')
+
+        self.manual_example()
+
         # change seed to something fix if you want exactly reproducible test
         seed0 = np.random.randint(50)
         print("NMS test progress (done/total box configurations) 2D:", end="\n")
