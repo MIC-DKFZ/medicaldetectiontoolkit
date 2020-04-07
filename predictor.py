@@ -91,7 +91,7 @@ class Predictor:
                             one dictionary: [[box_0, ...], [box_n,...]]. batch elements are slices for 2D predictions
                             (if not merged to 3D), and a dummy batch dimension of 1 for 3D predictions.
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
-                 - monitor_values (only in validation mode)
+                 - losses (only in validation mode)
         """
         self.logger.info('evaluating patient {} for fold {} '.format(batch['pid'], self.cf.fold))
 
@@ -158,11 +158,12 @@ class Predictor:
 
                     # call prediction pipeline and store results in dict.
                     results_dict = self.predict_patient(batch)
-                    dict_of_patient_results[batch['pid']]['results_list'].append(results_dict['boxes'])
+                    dict_of_patient_results[batch['pid']]['results_list'].append({"boxes": results_dict['boxes']})
+
 
 
         self.logger.info('finished predicting test set. starting post-processing of predictions.')
-        list_of_results_per_patient = []
+        results_per_patient = []
 
         # loop over patients again to flatten results across epoch predictions.
         # if provided, add ground truth boxes for evaluation.
@@ -171,8 +172,9 @@ class Predictor:
             tmp_ens_list = p_dict['results_list']
             results_dict = {}
             # collect all boxes/seg_preds of same batch_instance over temporal instances.
-            results_dict['boxes'] = [[item for d in tmp_ens_list for item in d[batch_instance]]
-                                     for batch_instance in range(len(tmp_ens_list[0]))]
+            b_size = len(tmp_ens_list[0])
+            results_dict['boxes'] = [[item for rank_dict in tmp_ens_list for item in rank_dict["boxes"][batch_instance]]
+                                     for batch_instance in range(b_size)]
 
             # TODO return for instance segmentation:
             # results_dict['seg_preds'] = np.mean(results_dict['seg_preds'], 1)[:, None]
@@ -186,21 +188,21 @@ class Predictor:
                                                      'box_label': p_dict['patient_roi_labels'][b][t],
                                                      'box_type': 'gt'})
 
-            list_of_results_per_patient.append([results_dict['boxes'], pid])
+            results_per_patient.append([results_dict, pid])
 
         # save out raw predictions.
         out_string = 'raw_pred_boxes_hold_out_list' if self.cf.hold_out_test_set else 'raw_pred_boxes_list'
         with open(os.path.join(self.cf.fold_dir, '{}.pickle'.format(out_string)), 'wb') as handle:
-            pickle.dump(list_of_results_per_patient, handle)
+            pickle.dump(results_per_patient, handle)
 
         if return_results:
-
+            final_patient_box_results = [(res_dict["boxes"], pid) for res_dict, pid in results_per_patient]
             # consolidate predictions.
             self.logger.info('applying wcs to test set predictions with iou = {} and n_ens = {}.'.format(
                 self.cf.wcs_iou, self.n_ens))
             pool = Pool(processes=6)
-            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, self.n_ens] for ii in list_of_results_per_patient]
-            list_of_results_per_patient = pool.map(apply_wbc_to_patient, mp_inputs, chunksize=1)
+            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, self.n_ens] for ii in final_patient_box_results]
+            final_patient_box_results = pool.map(apply_wbc_to_patient, mp_inputs, chunksize=1)
             pool.close()
             pool.join()
 
@@ -208,19 +210,24 @@ class Predictor:
             if self.cf.merge_2D_to_3D_preds:
                 self.logger.info('applying 2Dto3D merging to test set predictions with iou = {}.'.format(self.cf.merge_3D_iou))
                 pool = Pool(processes=6)
-                mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in list_of_results_per_patient]
-                list_of_results_per_patient = pool.map(merge_2D_to_3D_preds_per_patient, mp_inputs, chunksize=1)
+                mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in final_patient_box_results]
+                final_patient_box_results = pool.map(merge_2D_to_3D_preds_per_patient, mp_inputs, chunksize=1)
                 pool.close()
                 pool.join()
 
-            return list_of_results_per_patient
+            # final_patient_box_results holds [avg_boxes, pid] if wbc
+            for ix in range(len(results_per_patient)):
+                assert results_per_patient[ix][1] == final_patient_box_results[ix][1], "should be same pid"
+                results_per_patient[ix][0]["boxes"] = final_patient_box_results[ix][0]
+
+            return results_per_patient
 
 
     def load_saved_predictions(self, apply_wbc=False):
         """
         loads raw predictions saved by self.predict_test_set. consolidates and merges 2D boxes to 3D cubes for evaluation.
         (if model predicts 2D but evaluation is run in 3D)
-        :return: (optionally) list_of_results_per_patient: list over patient results. each entry is a dict with keys:
+        :return: (optionally) results_list: list over patient results. each entry is a dict with keys:
                  - 'boxes': list over batch elements. each element is a list over boxes, where each box is
                             one dictionary: [[box_0, ...], [box_n,...]]. batch elements are slices for 2D predictions
                             (if not merged to 3D), and a dummy batch dimension of 1 for 3D predictions.
@@ -230,50 +237,65 @@ class Predictor:
         # load predictions for a single test-set fold.
         if not self.cf.hold_out_test_set:
             with open(os.path.join(self.cf.fold_dir, 'raw_pred_boxes_list.pickle'), 'rb') as handle:
-                list_of_results_per_patient = pickle.load(handle)
+                results_list = pickle.load(handle)
+            box_results_list = [(res_dict["boxes"], pid) for res_dict, pid in results_list]
             da_factor = 4 if self.cf.test_aug else 1
             n_ens = self.cf.test_n_epochs * da_factor
             self.logger.info('loaded raw test set predictions with n_patients = {} and n_ens = {}'.format(
-                len(list_of_results_per_patient), n_ens))
+                len(results_list), n_ens))
 
         # if hold out test set was perdicted, aggregate predictions of all trained models
         # corresponding to all CV-folds and flatten them.
         else:
-            boxes_list = []
-            for fold in self.cf.folds:
+            self.logger.info("loading saved predictions of hold-out test set")
+            fold_dirs = sorted([os.path.join(self.cf.exp_dir, f) for f in os.listdir(self.cf.exp_dir) if
+                                os.path.isdir(os.path.join(self.cf.exp_dir, f)) and f.startswith("fold")])
+
+            results_list = []
+            folds_loaded = 0
+            for fold in range(self.cf.n_cv_splits):
                 fold_dir = os.path.join(self.cf.exp_dir, 'fold_{}'.format(fold))
-                with open(os.path.join(fold_dir, 'raw_pred_boxes_hold_out_list.pickle'), 'rb') as handle:
-                    fold_list = pickle.load(handle)
-                    pids = [ii[1] for ii in fold_list]
-                    boxes_list.append([ii[0] for ii in fold_list])
-            list_of_results_per_patient = [[[[box for fold_list in boxes_list for box in fold_list[pix][0]
-                                              if box['box_type'] == 'det']], pid] for pix, pid in enumerate(pids)]
+                if fold_dir in fold_dirs:
+                    with open(os.path.join(fold_dir, 'raw_pred_boxes_hold_out_list.pickle'), 'rb') as handle:
+                        fold_list = pickle.load(handle)
+                        results_list += fold_list
+                        folds_loaded += 1
+                else:
+                    self.logger.info("Skipping fold {} since no saved predictions found.".format(fold))
+            box_results_list = []
+            for res_dict, pid in results_list: #without filtering gt out:
+                box_results_list.append((res_dict['boxes'], pid))
+
             da_factor = 4 if self.cf.test_aug else 1
-            n_ens = self.cf.test_n_epochs * da_factor * len(self.cf.folds)
+            n_ens = self.cf.test_n_epochs * da_factor * folds_loaded
 
         # consolidate predictions.
         if apply_wbc:
             self.logger.info('applying wcs to test set predictions with iou = {} and n_ens = {}.'.format(
                 self.cf.wcs_iou, n_ens))
             pool = Pool(processes=6)
-            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, n_ens] for ii in list_of_results_per_patient]
-            list_of_results_per_patient = pool.map(apply_wbc_to_patient, mp_inputs, chunksize=1)
+            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, n_ens] for ii in box_results_list]
+            box_results_list = pool.map(apply_wbc_to_patient, mp_inputs, chunksize=1)
             pool.close()
             pool.join()
-        else:
-            list_of_results_per_patient = list_of_results_per_patient
 
         # merge 2D box predictions to 3D cubes (if model predicts 2D but evaluation is run in 3D)
         if self.cf.merge_2D_to_3D_preds:
             self.logger.info(
                 'applying 2Dto3D merging to test set predictions with iou = {}.'.format(self.cf.merge_3D_iou))
             pool = Pool(processes=6)
-            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in list_of_results_per_patient]
-            list_of_results_per_patient = pool.map(merge_2D_to_3D_preds_per_patient, mp_inputs, chunksize=1)
+            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in box_results_list]
+            box_results_list = pool.map(merge_2D_to_3D_preds_per_patient, mp_inputs, chunksize=1)
             pool.close()
             pool.join()
 
-        return list_of_results_per_patient
+
+        for ix in range(len(results_list)):
+            assert np.all(
+                results_list[ix][1] == box_results_list[ix][1]), "pid mismatch between loaded and aggregated results"
+            results_list[ix][0]["boxes"] = box_results_list[ix][0]
+
+        return results_list  # holds (results_dict, pid)
 
 
     def data_aug_forward(self, batch):
@@ -287,7 +309,7 @@ class Predictor:
                             one dictionary: [[box_0, ...], [box_n,...]]. batch elements are slices for 2D predictions,
                             and a dummy batch dimension of 1 for 3D predictions.
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
-                 - monitor_values (only in validation mode)
+                 - losses (only in validation mode)
         """
         patch_crops = batch['patch_crop_coords'] if self.patched_patient else None
         results_list = [self.spatial_tiling_forward(batch, patch_crops)]
@@ -362,8 +384,11 @@ class Predictor:
         results_dict['seg_preds'] = np.array([[item for d in results_list for item in d['seg_preds'][batch_instance]]
                                               for batch_instance in range(org_img_shape[0])])
         if self.mode == 'val':
-            results_dict['monitor_values'] = results_list[0]['monitor_values']
-
+            try:
+                results_dict['torch_loss'] = results_list[0]['torch_loss']
+                results_dict['class_loss'] = results_list[0]['class_loss']
+            except KeyError:
+                pass
         return results_dict
 
 
@@ -381,7 +406,7 @@ class Predictor:
                             one dictionary: [[box_0, ...], [box_n,...]]. batch elements are slices for 2D predictions,
                             and a dummy batch dimension of 1 for 3D predictions.
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
-                 - monitor_values (only in validation mode)
+                 - losses (only in validation mode)
         """
         if patch_crops is not None:
 
@@ -440,8 +465,11 @@ class Predictor:
                         results_dict['boxes'][pc[4]].append(box)
 
             if self.mode == 'val':
-                results_dict['monitor_values'] = patches_dict['monitor_values']
-
+                try:
+                    results_dict['torch_loss'] = patches_dict['torch_loss']
+                    results_dict['class_loss'] = patches_dict['class_loss']
+                except KeyError:
+                    pass
         # if predictions are not patch-based:
         # add patch-origin info to boxes (entire image is the same patch with overlap=1) and return results.
         else:
@@ -466,7 +494,7 @@ class Predictor:
                             one dictionary: [[box_0, ...], [box_n,...]]. batch elements are slices for 2D predictions,
                             and a dummy batch dimension of 1 for 3D predictions.
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
-                 - monitor_values (only in validation mode)
+                 - losses (only in validation mode)
         """
         self.logger.info('forwarding (patched) patient with shape: {}'.format(batch['data'].shape))
 
@@ -500,10 +528,13 @@ class Predictor:
             results_dict['seg_preds'] = np.array([item for d in chunk_dicts for item in d['seg_preds']])
 
             if self.mode == 'val':
-                # estimate metrics by mean over batch_chunks. Most similar to training metrics.
-                results_dict['monitor_values'] = \
-                    {k:np.mean([d['monitor_values'][k] for d in chunk_dicts])
-                     for k in chunk_dicts[0]['monitor_values'].keys()}
+                try:
+                    # estimate metrics by mean over batch_chunks. Most similar to training metrics.
+                    results_dict['torch_loss'] = torch.mean(torch.cat([d['torch_loss'] for d in chunk_dicts]))
+                    results_dict['class_loss'] = np.mean([d['class_loss'] for d in chunk_dicts])
+                except KeyError:
+                    # losses are not necessarily monitored
+                    pass
                 # discard returned ground-truth boxes (also training info boxes).
                 results_dict['boxes'] = [[box for box in b if box['box_type'] == 'det'] for b in results_dict['boxes']]
 

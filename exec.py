@@ -17,14 +17,22 @@
 """execution script."""
 
 import argparse
-import os
+import os, warnings
 import time
+
 import torch
 
 import utils.exp_utils as utils
 from evaluator import Evaluator
 from predictor import Predictor
 from plotting import plot_batch_prediction
+
+for msg in ["Attempting to set identical bottom==top results",
+            "This figure includes Axes that are not compatible with tight_layout",
+            "Data has no positive values, and therefore cannot be log-scaled.",
+            ".*invalid value encountered in double_scalars.*",
+            ".*Mean of empty slice.*"]:
+    warnings.filterwarnings("ignore", msg)
 
 
 def train(logger):
@@ -76,10 +84,11 @@ def train(logger):
             logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.2f}s / bw {4:.2f} s / total {5:.2f} s || '
                         .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
                                 time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
-            train_results_list.append([results_dict['boxes'], batch['pid']])
+            #train_results_list.append([results_dict['boxes'], batch['pid']])
+            train_results_list.append(({k:v for k,v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
 
         _, monitor_metrics['train'] = train_evaluator.evaluate_predictions(train_results_list, monitor_metrics['train'])
-        #import IPython; IPython.embed()
+
         train_time = time.time() - start_time
 
         logger.info('starting validation in mode {}.'.format(cf.val_mode))
@@ -94,7 +103,8 @@ def train(logger):
                         results_dict = val_predictor.predict_patient(batch)
                     elif cf.val_mode == 'val_sampling':
                         results_dict = net.train_forward(batch, is_validation=True)
-                    val_results_list.append([results_dict['boxes'], batch['pid']])
+                    #val_results_list.append([results_dict['boxes'], batch['pid']])
+                    val_results_list.append(({k:v for k,v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
 
                 _, monitor_metrics['val'] = val_evaluator.evaluate_predictions(val_results_list, monitor_metrics['val'])
                 model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch)
@@ -221,7 +231,7 @@ if __name__ == '__main__':
             cf.folds = args.folds
             predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
             results_list = predictor.load_saved_predictions(apply_wbc=True)
-            utils.create_csv_output(results_list, cf, logger)
+            utils.create_csv_output([(res_dict["boxes"], pid) for res_dict, pid in results_list], cf, logger)
 
         else:
             if folds is None:

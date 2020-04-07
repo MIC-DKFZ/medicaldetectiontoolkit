@@ -397,6 +397,8 @@ class net(nn.Module):
         box_results_list = [[] for _ in range(img.shape[0])]
         detections, class_logits, pred_deltas, seg_logits = self.forward(img)
 
+
+
         # loop over batch
         for b in range(img.shape[0]):
 
@@ -423,6 +425,13 @@ class net(nn.Module):
             anchor_class_match = torch.from_numpy(anchor_class_match).cuda()
             anchor_target_deltas = torch.from_numpy(anchor_target_deltas).float().cuda()
 
+            # todo debug print
+            pos_indices = torch.nonzero(anchor_class_match > 0).squeeze(0)
+            neg_indices = torch.nonzero(anchor_class_match == -1).squeeze(0)
+            softmax = F.softmax(class_logits[b][pos_indices].detach(), 1)
+            #ics = np.random.choice(range(softmax.shape[0]), size=min(softmax.shape[0], 6))
+            comb_view = torch.cat((anchor_class_match[pos_indices].detach().unsqueeze(1).float(), softmax), dim=1)
+            print(comb_view)
             # compute losses.
             class_loss, neg_anchor_ix = compute_class_loss(anchor_class_match, class_logits[b])
             bbox_loss = compute_bbox_loss(anchor_target_deltas, pred_deltas[b], anchor_class_match)
@@ -440,7 +449,7 @@ class net(nn.Module):
         results_dict = get_results(self.cf, img.shape, detections, seg_logits, box_results_list)
         loss = batch_class_loss + batch_bbox_loss
         results_dict['torch_loss'] = loss
-        results_dict['monitor_values'] = {'loss': loss.item(), 'class_loss': batch_class_loss.item()}
+        results_dict['class_loss'] = batch_class_loss.item()
         results_dict['logger_string'] = "loss: {0:.2f}, class: {1:.2f}, bbox: {2:.2f}"\
             .format(loss.item(), batch_class_loss.item(), batch_bbox_loss.item())
 

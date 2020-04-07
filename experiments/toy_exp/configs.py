@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'detection_unet'
+        self.model = 'retina_net'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -114,7 +114,7 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 24
+        self.num_epochs = 22
         self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 

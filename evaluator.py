@@ -17,6 +17,8 @@
 import os
 import numpy as np
 import pandas as pd
+import torch
+
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.metrics import roc_curve, precision_recall_curve
 import utils.model_utils as mutils
@@ -36,24 +38,16 @@ class Evaluator():
         self.mode = mode
 
 
-    def evaluate_predictions(self, results_list, monitor_metrics=None):
-        """
-        Performs the matching of predicted boxes and ground truth boxes. Loops over list of matching IoUs and foreground classes.
-        Resulting info of each prediction is stored as one line in an internal dataframe, with the keys:
-        det_type: 'tp' (true positive), 'fp' (false positive), 'fn' (false negative), 'tn' (true negative)
-        pred_class: foreground class which the object predicts.
-        pid: corresponding patient-id.
-        pred_score: confidence score [0, 1]
-        fold: corresponding fold of CV.
-        match_iou: utilized IoU for matching.
-        :param results_list: list of model predictions. Either from train/val_sampling (patch processing) for monitoring with form:
-        [[[results_0, ...], [pid_0, ...]], [[results_n, ...], [pid_n, ...]], ...]
-        Or from val_patient/testing (patient processing), with form: [[results_0, pid_0], [results_1, pid_1], ...])
-        :param monitor_metrics (optional):  dict of dicts with all metrics of previous epochs.
-        :return monitor_metrics: if provided (during training), return monitor_metrics now including results of current epoch.
-        """
-        # gets results_list = [[batch_instances_box_lists], [batch_instances_pids]]*n_batches
-        # we want to evaluate one batch_instance (= 2D or 3D image) at a time.
+    def eval_losses(self, batch_res_dicts):
+        if hasattr(self.cf, "losses_to_monitor"):
+            loss_names = self.cf.losses_to_monitor
+        else:
+            loss_names = {name for b_res_dict in batch_res_dicts for name in b_res_dict if 'loss' in name}
+        self.epoch_losses = {l_name: torch.tensor([b_res_dict[l_name] for b_res_dict in batch_res_dicts if l_name
+                                                   in b_res_dict.keys()]).mean().item() for l_name in loss_names}
+
+    def eval_boxes(self, batch_res_dicts, pid_list):
+        """ """
 
         df_list_preds = []
         df_list_labels = []
@@ -62,20 +56,21 @@ class Evaluator():
         df_list_type = []
         df_list_match_iou = []
 
-        self.logger.info('evaluating in mode {}'.format(self.mode))
-
 
         if self.mode == 'train' or self.mode=='val_sampling':
+            # one pid per batch element
             # batch_size > 1, with varying patients across batch:
             # [[[results_0, ...], [pid_0, ...]], [[results_n, ...], [pid_n, ...]], ...]
-            # -> [results_0, results_1, ..] , [pid_0, pid_1, ...]
-            batch_elements_list = [[b_box_list] for item in results_list for b_box_list in item[0]]
-            pid_list = [pid for item in results_list for pid in item[1]]
+            # -> [results_0, results_1, ..]
+            batch_inst_boxes = [b_res_dict['boxes'] for b_res_dict in batch_res_dicts]  # len: nr of batches in epoch
+            batch_inst_boxes = [[b_inst_boxes] for whole_batch_boxes in batch_inst_boxes for b_inst_boxes in
+                                whole_batch_boxes]
         else:
             # patient processing, one element per batch = one patient.
-            # [[results_0, pid_0], [results_1, pid_1], ...] -> [results_0, results_1, ..] , [pid_0, pid_1, ...]
-            batch_elements_list = [item[0] for item in results_list]
-            pid_list = [item[1] for item in results_list]
+            # [[results_0, pid_0], [results_1, pid_1], ...] -> [results_0, results_1, ..]
+            batch_inst_boxes = [b_res_dict['boxes'] for b_res_dict in batch_res_dicts]
+
+        assert len(batch_inst_boxes) == len(pid_list)
 
         for match_iou in self.cf.ap_match_ious:
             self.logger.info('evaluating with match_iou: {}'.format(match_iou))
@@ -85,7 +80,7 @@ class Evaluator():
                     len_df_list_before_patient = len(df_list_pids)
 
                     # input of each batch element is a list of boxes, where each box is a dictionary.
-                    for bix, b_boxes_list in enumerate(batch_elements_list[pix]):
+                    for bix, b_boxes_list in enumerate(batch_inst_boxes[pix]):
 
                         b_tar_boxes = np.array([box['box_coords'] for box in b_boxes_list if
                                                 (box['box_type'] == 'gt' and box['box_label'] == cl)])
@@ -187,7 +182,53 @@ class Evaluator():
         self.test_df['det_type'] = df_list_type
         self.test_df['fold'] = self.cf.fold
         self.test_df['match_iou'] = df_list_match_iou
+
+
+    def evaluate_predictions(self, results_list, monitor_metrics=None):
+        """
+        Performs the matching of predicted boxes and ground truth boxes. Loops over list of matching IoUs and foreground classes.
+        Resulting info of each prediction is stored as one line in an internal dataframe, with the keys:
+        det_type: 'tp' (true positive), 'fp' (false positive), 'fn' (false negative), 'tn' (true negative)
+        pred_class: foreground class which the object predicts.
+        pid: corresponding patient-id.
+        pred_score: confidence score [0, 1]
+        fold: corresponding fold of CV.
+        match_iou: utilized IoU for matching.
+        :param results_list: list of model predictions. Either from train/val_sampling (patch processing) for monitoring with form:
+        [[[results_0, ...], [pid_0, ...]], [[results_n, ...], [pid_n, ...]], ...]
+        Or from val_patient/testing (patient processing), with form: [[results_0, pid_0], [results_1, pid_1], ...])
+        :param monitor_metrics (optional):  dict of dicts with all metrics of previous epochs.
+        :return monitor_metrics: if provided (during training), return monitor_metrics now including results of current epoch.
+        """
+
+        self.logger.info('evaluating in mode {}'.format(self.mode))
+
+        batch_res_dicts = [batch[0] for batch in results_list]  # len: nr of batches in epoch
+        if self.mode == 'train' or self.mode == 'val_sampling':
+            # one pid per batch element
+            # [[[results_0, ...], [pid_0, ...]], [[results_n, ...], [pid_n, ...]], ...]
+            # -> [pid_0, pid_1, ...]
+            # additional list wrapping to make conform with below per-patient batches, where one pid is linked to more than one batch instance
+            pid_list = [batch_instance_pid for batch in results_list for batch_instance_pid in batch[1]]
+        elif self.mode == "val_patient" or self.mode == "test":
+            # [[results_0, pid_0], [results_1, pid_1], ...] -> [pid_0, pid_1, ...]
+            # in patientbatchiterator there is only one pid per batch
+            pid_list = [np.unique(batch[1]) for batch in results_list]
+            assert np.all([len(pid) == 1 for pid in
+                           pid_list]), "pid list in patient-eval mode, should only contain a single scalar per patient: {}".format(
+                pid_list)
+            pid_list = [pid[0] for pid in pid_list]
+            # todo remove assert
+            pid_list_orig = [item[1] for item in results_list]
+            assert np.all(pid_list == pid_list_orig)
+        else:
+            raise Exception("undefined run mode encountered")
+
+        self.eval_losses(batch_res_dicts)
+        self.eval_boxes(batch_res_dicts, pid_list)
+
         if monitor_metrics is not None:
+            # return all_stats, updated monitor_metrics
             return self.return_metrics(monitor_metrics)
 
 
@@ -203,6 +244,13 @@ class Evaluator():
         score_level.
         :return: monitor_metrics
         """
+
+        # -------------- monitoring independent of class, score level ------------
+        if monitor_metrics is not None:
+            for l_name in self.epoch_losses:
+                monitor_metrics[l_name] = [self.epoch_losses[l_name]]
+
+
         df = self.test_df
 
         all_stats = []

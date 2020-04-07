@@ -327,6 +327,8 @@ def create_csv_output(results_list, cf, logger):
         #    resampling_info = pickle.load(handle)
 
         for bix, box in enumerate(r[0][0]):
+            if box["box_type"] == "gt":
+                continue
             assert box['box_type'] == 'det', box['box_type']
             coords = box['box_coords']
             score = box['box_score']
