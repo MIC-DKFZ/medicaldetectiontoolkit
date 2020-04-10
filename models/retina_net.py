@@ -425,13 +425,6 @@ class net(nn.Module):
             anchor_class_match = torch.from_numpy(anchor_class_match).cuda()
             anchor_target_deltas = torch.from_numpy(anchor_target_deltas).float().cuda()
 
-            # todo debug print
-            pos_indices = torch.nonzero(anchor_class_match > 0).squeeze(0)
-            neg_indices = torch.nonzero(anchor_class_match == -1).squeeze(0)
-            softmax = F.softmax(class_logits[b][pos_indices].detach(), 1)
-            #ics = np.random.choice(range(softmax.shape[0]), size=min(softmax.shape[0], 6))
-            comb_view = torch.cat((anchor_class_match[pos_indices].detach().unsqueeze(1).float(), softmax), dim=1)
-            print(comb_view)
             # compute losses.
             class_loss, neg_anchor_ix = compute_class_loss(anchor_class_match, class_logits[b])
             bbox_loss = compute_bbox_loss(anchor_target_deltas, pred_deltas[b], anchor_class_match)
