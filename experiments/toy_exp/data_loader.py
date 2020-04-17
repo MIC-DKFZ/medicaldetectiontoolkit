@@ -45,6 +45,9 @@ def get_train_generators(cf, logger):
     all_data = load_dataset(cf, logger)
     all_pids_list = np.unique([v['pid'] for (k, v) in all_data.items()])
 
+    assert cf.n_train_val_data <= len(all_pids_list), \
+        "requested {} train val samples, but dataset only has {} train val samples.".format(
+            cf.n_train_val_data, len(all_pids_list))
     train_pids = all_pids_list[:int(2*cf.n_train_val_data//3)]
     val_pids = all_pids_list[int(np.ceil(2*cf.n_train_val_data//3)):cf.n_train_val_data]
 

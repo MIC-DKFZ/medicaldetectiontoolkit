@@ -21,11 +21,12 @@ import pickle
 import argparse
 from multiprocessing import Pool
 
-def multi_processing_create_image(inputs):
+DO_MP = True
 
 
-    out_dir, six, foreground_margin, class_diameters, mode, noisy_bg = inputs
-    print('processing {} {}'.format(out_dir, six))
+def create_image(out_dir, six, foreground_margin, class_diameters, mode, noisy_bg):
+
+    print('\rprocessing {} {}'.format(out_dir, six), end="", flush=True)
 
     img = np.random.rand(320, 320) if noisy_bg else np.zeros((320, 320))
     seg = np.zeros((320, 320)).astype('uint8')
@@ -57,12 +58,15 @@ def multi_processing_create_image(inputs):
         pickle.dump([out_path, class_id, str(six)], handle)
 
 
-def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20), noisy_bg=False):
+def generate_dataset(cf, exp_name, n_train_images, n_test_images, mode, class_diameters=(20, 20), noisy_bg=False):
 
     train_dir = os.path.join(cf.root_dir, exp_name, 'train')
     test_dir = os.path.join(cf.root_dir, exp_name, 'test')
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(test_dir, exist_ok=True)
+    if os.path.isdir(train_dir) or os.path.isdir(test_dir):
+        raise Exception("A dataset directory already exists at {}. ".format(cf.root_dir)+
+                        "Please make sure to generate data in an empty or new directory.")
+    os.makedirs(train_dir, exist_ok=False)
+    os.makedirs(test_dir, exist_ok=False)
 
     # enforced distance between object center and image edge.
     foreground_margin = int(np.ceil(np.max(class_diameters) / 1.25))
@@ -72,10 +76,14 @@ def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class
     info += [[test_dir, six, foreground_margin, class_diameters, mode, noisy_bg] for six in range(n_test_images)]
 
     print('starting creation of {} images'.format(len(info)))
-    pool = Pool(processes=os.cpu_count()-1)
-    pool.map(multi_processing_create_image, info, chunksize=1)
-    pool.close()
-    pool.join()
+    if DO_MP:
+        pool = Pool(processes=os.cpu_count()-1)
+        pool.starmap(create_image, info, chunksize=1)
+        pool.close()
+        pool.join()
+    else:
+        for inputs in info:
+            create_image(*inputs)
 
     aggregate_meta_info(train_dir)
     aggregate_meta_info(test_dir)
@@ -90,7 +98,7 @@ def aggregate_meta_info(exp_dir):
             df.loc[len(df)] = pickle.load(handle)
 
     df.to_pickle(os.path.join(exp_dir, 'info_df.pickle'))
-    print ("aggregated meta info to df with length", len(df))
+    print("aggregated meta info to df with length", len(df))
 
 
 if __name__ == '__main__':
@@ -118,7 +126,7 @@ if __name__ == '__main__':
     }
 
     for mode in args.modes:
-        generate_experiment(cf, mode + ("_noise" if args.noise else ""), n_train_images=args.n_train, n_test_images=args.n_test, mode=mode,
+        generate_dataset(cf, mode + ("_noise" if args.noise else ""), n_train_images=args.n_train, n_test_images=args.n_test, mode=mode,
                             class_diameters=class_diameters[mode], noisy_bg=args.noise)
 
 
