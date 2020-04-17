@@ -44,7 +44,7 @@ def train(logger):
         cf.dim, cf.fold, cf.exp_dir, cf.model))
 
     net = model.net(cf, logger).cuda()
-    optimizer = torch.optim.Adam(net.parameters(), lr=cf.learning_rate[0], weight_decay=cf.weight_decay)
+    optimizer = torch.optim.AdamW(net.parameters(), lr=cf.learning_rate[0], weight_decay=cf.weight_decay)
     if cf.dynamic_lr_scheduling:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode, factor=cf.lr_decay_factor,
                                                                patience=cf.scheduling_patience)
@@ -72,7 +72,6 @@ def train(logger):
 
         net.train()
         train_results_list = []
-
         for bix in range(cf.num_train_batches):
             batch = next(batch_gen['train'])
             tic_fw = time.time()
@@ -81,13 +80,17 @@ def train(logger):
             optimizer.zero_grad()
             results_dict['torch_loss'].backward()
             optimizer.step()
-            logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.2f}s / bw {4:.2f} s / total {5:.2f} s || '
-                        .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
-                                time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
-            #train_results_list.append([results_dict['boxes'], batch['pid']])
+            print('\rtr. batch {0}/{1} (ep. {2}) fw {3:.2f}s / bw {4:.2f} s / total {5:.2f} s || '.format(
+                bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw, time.time() - tic_bw,
+                time.time() - tic_fw) + results_dict['logger_string'], flush=True, end="")
             train_results_list.append(({k:v for k,v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
+        print()
 
         _, monitor_metrics['train'] = train_evaluator.evaluate_predictions(train_results_list, monitor_metrics['train'])
+
+        logger.info('generating training example plot.')
+        plot_batch_prediction(batch, results_dict, cf, outfile=os.path.join(
+            cf.plot_dir, 'pred_example_{}_train.png'.format(cf.fold)))
 
         train_time = time.time() - start_time
 
@@ -119,8 +122,9 @@ def train(logger):
                 epoch, epoch_time, train_time, epoch_time-train_time))
             batch = next(batch_gen['val_sampling'])
             results_dict = net.train_forward(batch, is_validation=True)
-            logger.info('plotting predictions from validation sampling.')
-            plot_batch_prediction(batch, results_dict, cf)
+            logger.info('generating validation-sampling example plot.')
+            plot_batch_prediction(batch, results_dict, cf, outfile=os.path.join(
+                cf.plot_dir, 'pred_example_{}_val.png'.format(cf.fold)))
 
         # -------------- scheduling -----------------
         if cf.dynamic_lr_scheduling:
@@ -164,11 +168,14 @@ if __name__ == '__main__':
                         help='if resuming to checkpoint, the desired fold still needs to be parsed via --folds.')
     parser.add_argument('--exp_source', type=str, default='experiments/toy_exp',
                         help='specifies, from which source experiment to load configs and data_loader.')
+    parser.add_argument('--no_benchmark', action='store_true', help="Do not use cudnn.benchmark.")
     parser.add_argument('-d', '--dev', default=False, action='store_true', help="development mode: shorten everything")
 
     args = parser.parse_args()
     folds = args.folds
     resume_to_checkpoint = args.resume_to_checkpoint
+
+    torch.backends.cudnn.benchmark = not args.no_benchmark
 
     if args.mode == 'train' or args.mode == 'train_test':
 
@@ -182,6 +189,8 @@ if __name__ == '__main__':
 
         cf.data_dest = args.data_dest
         logger = utils.get_logger(cf.exp_dir, cf.server_env)
+        logger.info("cudnn benchmark: {}, deterministic: {}.".format(torch.backends.cudnn.benchmark,
+                                                                     torch.backends.cudnn.deterministic))
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         model = utils.import_module('model', cf.model_path)
         logger.info("loaded model from {}".format(cf.model_path))

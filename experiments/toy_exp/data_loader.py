@@ -45,8 +45,8 @@ def get_train_generators(cf, logger):
     all_data = load_dataset(cf, logger)
     all_pids_list = np.unique([v['pid'] for (k, v) in all_data.items()])
 
-    train_pids = all_pids_list[:cf.n_train_data]
-    val_pids = all_pids_list[1000:1500]
+    train_pids = all_pids_list[:int(2*cf.n_train_val_data//3)]
+    val_pids = all_pids_list[int(np.ceil(2*cf.n_train_val_data//3)):cf.n_train_val_data]
 
     train_data = {k: v for (k, v) in all_data.items() if any(p == v['pid'] for p in train_pids)}
     val_data = {k: v for (k, v) in all_data.items() if any(p == v['pid'] for p in val_pids)}
@@ -253,7 +253,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
         out_data = data[None, None]
         out_seg = seg[None, None]
 
-        print('check patient data loader', out_data.shape, out_seg.shape)
+        #print('check patient data loader', out_data.shape, out_seg.shape)
         batch_2D = {'data': out_data, 'seg': out_seg, 'class_target': batch_class_targets, 'pid': pid}
         converter = ConvertSegToBoundingBoxCoordinates(dim=2, get_rois_from_seg_flag=False, class_specific_seg_flag=self.cf.class_specific_seg_flag)
         batch_2D = converter(**batch_2D)

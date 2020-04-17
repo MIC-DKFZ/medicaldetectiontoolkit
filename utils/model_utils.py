@@ -565,15 +565,16 @@ def gt_anchor_matching(cf, anchors, gt_boxes, gt_class_ids=None):
 
     # Subsample to balance positive anchors.
     ids = np.where(anchor_class_matches > 0)[0]
+    # extra == these positive anchors are too many --> reset them to negative ones.
     extra = len(ids) - (cf.rpn_train_anchors_per_image // 2)
     if extra > 0:
         # Reset the extra ones to neutral
-        ids = np.random.choice(ids, extra, replace=False)
-        anchor_class_matches[ids] = 0
+        extra_ids = np.random.choice(ids, extra, replace=False)
+        anchor_class_matches[extra_ids] = 0
 
     # Leave all negative proposals negative now and sample from them in online hard example mining.
     # For positive anchors, compute shift and scale needed to transform them to match the corresponding GT boxes.
-    ids = np.where(anchor_class_matches > 0)[0]
+    #ids = np.where(anchor_class_matches > 0)[0]
     ix = 0  # index into anchor_delta_targets
     for i, a in zip(ids, anchors[ids]):
         # closest gt box (it might have IoU < anchor_matching_iou)
@@ -763,7 +764,7 @@ def roi_align_3d_numpy(input: np.ndarray, rois, output_size: tuple,
 
 
 def unique1d(tensor):
-    if tensor.size()[0] == 0 or tensor.size()[0] == 1:
+    if tensor.shape[0] == 0 or tensor.shape[0] == 1:
         return tensor
     tensor = tensor.sort()[0]
     unique_bool = tensor[1:] != tensor [:-1]
@@ -771,7 +772,7 @@ def unique1d(tensor):
     if tensor.is_cuda:
         first_element = first_element.cuda()
     unique_bool = torch.cat((first_element, unique_bool),dim=0)
-    return tensor[unique_bool.data]
+    return tensor[unique_bool]
 
 
 

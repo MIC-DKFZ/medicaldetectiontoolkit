@@ -23,7 +23,7 @@ import os
 from copy import deepcopy
 
 
-def plot_batch_prediction(batch, results_dict, cf, outfile= None):
+def plot_batch_prediction(batch, results_dict, cf, outfile=None, suptitle=None):
     """
     plot the input images, ground truth annotations, and output predictions of a batch. If 3D batch, plots a 2D projection
     of one randomly sampled element (patient) in the batch. Since plotting all slices of patient volume blows up costs of
@@ -150,6 +150,9 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
                         plt.plot([coords[3], coords[3]], [coords[0], coords[2]], color=color, linewidth=1, alpha=1) # right
                         if plot_text:
                             plt.text(text_x, text_y, score_text, fontsize=score_font_size, color=text_color)
+
+    if suptitle is not None:
+        plt.suptitle(suptitle, fontsize=22)
 
     try:
         plt.savefig(outfile)

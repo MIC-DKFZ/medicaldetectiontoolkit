@@ -46,7 +46,8 @@ class configs(DefaultConfigs):
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
         self.hold_out_test_set = True
-        self.n_train_data = 2500
+        # including val set. will be 3/4 train, 1/4 val.
+        self.n_train_val_data = 2500
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
@@ -105,7 +106,7 @@ class configs(DefaultConfigs):
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 0
+        self.weight_decay = 3e-5
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
         self.weight_init = None
@@ -114,7 +115,7 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 22
+        self.num_epochs = 24
         self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
@@ -130,7 +131,7 @@ class configs(DefaultConfigs):
         # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
         self.dynamic_lr_scheduling = True
         self.lr_decay_factor = 0.5
-        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 2400)
+        self.scheduling_patience = np.ceil(3600 / (self.num_train_batches * self.batch_size))
         self.scheduling_criterion = 'malignant_ap'
         self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
@@ -214,7 +215,7 @@ class configs(DefaultConfigs):
         self.n_roi_candidates = 3 if self.dim == 2 else 8
 
         # loss mode: either weighted cross entropy ('wce'), batch-wise dice loss ('dice), or the sum of both ('dice_wce')
-        self.seg_loss_mode = 'dice_wce'
+        self.seg_loss_mode = 'wce'
 
         # if <1, false positive predictions in foreground are penalized less.
         self.fp_dice_weight = 1 if self.dim == 2 else 1
@@ -230,7 +231,7 @@ class configs(DefaultConfigs):
     def add_mrcnn_configs(self):
 
         # learning rate is a list with one entry per epoch.
-        self.learning_rate = [1e-4] * self.num_epochs
+        self.learning_rate = [3e-4] * self.num_epochs
 
         # disable mask head loss. (e.g. if no pixelwise annotations available)
         self.frcnn_mode = False
@@ -271,7 +272,7 @@ class configs(DefaultConfigs):
         self.rpn_nms_threshold = 0.7 if self.dim == 2 else 0.7
 
         # loss sampling settings.
-        self.rpn_train_anchors_per_image = 2  #per batch element
+        self.rpn_train_anchors_per_image = 64 #per batch element
         self.train_rois_per_image = 2 #per batch element
         self.roi_positive_ratio = 0.5
         self.anchor_matching_iou = 0.7

@@ -93,7 +93,8 @@ class Predictor:
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
                  - losses (only in validation mode)
         """
-        self.logger.info('evaluating patient {} for fold {} '.format(batch['pid'], self.cf.fold))
+        #self.logger.info('\revaluating patient {} for fold {} '.format(batch['pid'], self.cf.fold))
+        print('\revaluating patient {} for fold {} '.format(batch['pid'], self.cf.fold), end="", flush=True)
 
         # True if patient is provided in patches and predictions need to be tiled.
         self.patched_patient = True if 'patch_crop_coords' in list(batch.keys()) else False
@@ -496,7 +497,7 @@ class Predictor:
                  - 'seg_preds': pixel-wise predictions. (b, 1, y, x, (z))
                  - losses (only in validation mode)
         """
-        self.logger.info('forwarding (patched) patient with shape: {}'.format(batch['data'].shape))
+        #self.logger.info('forwarding (patched) patient with shape: {}'.format(batch['data'].shape))
 
         img = batch['data']
 

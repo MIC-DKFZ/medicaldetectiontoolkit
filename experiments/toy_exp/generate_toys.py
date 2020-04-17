@@ -73,7 +73,7 @@ def generate_experiment(cf, exp_name, n_train_images, n_test_images, mode, class
 
     print('starting creation of {} images'.format(len(info)))
     pool = Pool(processes=os.cpu_count()-1)
-    pool.map(multi_processing_create_image, info)
+    pool.map(multi_processing_create_image, info, chunksize=1)
     pool.close()
     pool.join()
 
