@@ -28,7 +28,7 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/media/gregor/HDD2TB/data/toy_mdt'
+        self.root_dir = '/home/gregor/datasets/toy_mdt'
 
         #########################
         #         I/O           #
@@ -46,11 +46,12 @@ class configs(DefaultConfigs):
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
         self.hold_out_test_set = True
-        self.n_train_data = 2500
+        # including val set. will be 3/4 train, 1/4 val.
+        self.n_train_val_data = 1500
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape_nonoise_dia12'
+        toy_mode = 'donuts_shape_noise'
 
 
         # path to preprocessed data.
