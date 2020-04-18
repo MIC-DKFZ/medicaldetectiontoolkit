@@ -290,13 +290,14 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
 if __name__=="__main__":
     import utils.exp_utils as utils
-    from .configs import Configs
+    cf_file = utils.import_module("cf", "configs.py")
 
     total_stime = time.time()
 
 
-    cf = Configs()
-    logger = utils.get_logger(0)
+    cf = cf_file.configs(server_env=False)
+    cf.server_env = False
+    logger = utils.get_logger(".")
     batch_gen = get_train_generators(cf, logger)
 
     train_batch = next(batch_gen["train"])
