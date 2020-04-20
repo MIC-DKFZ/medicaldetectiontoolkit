@@ -244,19 +244,29 @@ if __name__ == '__main__':
             results_list = predictor.load_saved_predictions(apply_wbc=True)
             utils.create_csv_output([(res_dict["boxes"], pid) for res_dict, pid in results_list], cf, logger)
 
+            logger.info('starting evaluation...')
+            cf.fold = "overall"
+            evaluator = Evaluator(cf, logger, mode='test')
+            evaluator.evaluate_predictions(results_list)
+            evaluator.score_test_df()
         else:
+            fold_dirs = sorted([os.path.join(cf.exp_dir, f) for f in os.listdir(cf.exp_dir) if
+                         os.path.isdir(os.path.join(cf.exp_dir, f)) and f.startswith("fold")])
             if folds is None:
                 folds = range(cf.n_cv_splits)
             for fold in folds:
                 cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
                 cf.fold = fold
                 logger.set_logfile(fold=fold)
-                predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
-                results_list = predictor.load_saved_predictions(apply_wbc=True)
-                logger.info('starting evaluation...')
-                evaluator = Evaluator(cf, logger, mode='test')
-                evaluator.evaluate_predictions(results_list)
-                evaluator.score_test_df()
+                if cf.fold_dir in fold_dirs:
+                    predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
+                    results_list = predictor.load_saved_predictions(apply_wbc=True)
+                    logger.info('starting evaluation...')
+                    evaluator = Evaluator(cf, logger, mode='test')
+                    evaluator.evaluate_predictions(results_list)
+                    evaluator.score_test_df()
+                else:
+                    logger.info("Skipping fold {} since no model parameters found.".format(fold))
 
     # create experiment folder and copy scripts without starting job.
     # useful for cloud deployment where configs might change before job actually runs.

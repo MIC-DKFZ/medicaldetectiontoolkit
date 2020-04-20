@@ -363,7 +363,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
                                   'original_img_shape': out_data.shape})
 
         if self.cf.dim == 2:
-            out_data = np.transpose(data, axes=(3, 0, 1, 2))  # (z, c, x, y )
+            out_data = np.transpose(data, axes=(3, 0, 1, 2))  # (z, c, y, x )
             out_seg = np.transpose(seg, axes=(2, 0, 1))[:, np.newaxis]
             out_targets = np.array(np.repeat(batch_class_targets, out_data.shape[0], axis=0))
 
@@ -463,22 +463,24 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
 if __name__=="__main__":
     import utils.exp_utils as utils
-    from configs import configs
 
     total_stime = time.time()
 
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
 
-    cf = configs()
     cf.created_fold_id_pickle = False
-    cf.exp_dir = "experiments/dev/"
+    cf.exp_dir = "dev/"
     cf.plot_dir = cf.exp_dir + "plots"
     os.makedirs(cf.exp_dir, exist_ok=True)
     cf.fold = 0
     logger = utils.get_logger(cf.exp_dir)
-    batch_gen = get_train_generators(cf, logger)
 
-    train_batch = next(batch_gen["train"])
+    #batch_gen = get_train_generators(cf, logger)
+    #train_batch = next(batch_gen["train"])
 
+    test_gen = get_test_generator(cf, logger)
+    test_batch = next(test_gen["test"])
 
     mins, secs = divmod((time.time() - total_stime), 60)
     h, mins = divmod(mins, 60)

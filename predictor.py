@@ -23,6 +23,8 @@ from multiprocessing import Pool
 import pickle
 import pandas as pd
 
+from plotting import plot_batch_prediction
+
 
 class Predictor:
     """
@@ -75,6 +77,9 @@ class Predictor:
             self.n_ens = cf.test_n_epochs
             if self.cf.test_aug:
                 self.n_ens *= 4
+
+            self.example_plot_dir = os.path.join(cf.test_dir, "example_plots")
+            os.makedirs(self.example_plot_dir, exist_ok=True)
 
 
     def predict_patient(self, batch):
@@ -137,6 +142,7 @@ class Predictor:
         # get paths of all parameter sets to be loaded for temporal ensembling. (or just one for no temp. ensembling).
         weight_paths = [os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(epoch), 'params.pth') for epoch in
                         self.epoch_ranking]
+        n_test_plots = min(batch_gen['n_test'], 1)
 
         for rank_ix, weight_path in enumerate(weight_paths):
 
@@ -144,23 +150,32 @@ class Predictor:
             self.net.load_state_dict(torch.load(weight_path))
             self.net.eval()
             self.rank_ix = str(rank_ix)  # get string of current rank for unique patch ids.
+            plot_batches = np.random.choice(np.arange(batch_gen['n_test']), size=n_test_plots, replace=False)
 
             with torch.no_grad():
-                for _ in range(batch_gen['n_test']):
+                for i in range(batch_gen['n_test']):
 
                     batch = next(batch_gen['test'])
 
                     # store batch info in patient entry of results dict.
                     if rank_ix == 0:
                         dict_of_patient_results[batch['pid']] = {}
-                        dict_of_patient_results[batch['pid']]['results_list'] = []
+                        dict_of_patient_results[batch['pid']]['results_dicts'] = []
                         dict_of_patient_results[batch['pid']]['patient_bb_target'] = batch['patient_bb_target']
                         dict_of_patient_results[batch['pid']]['patient_roi_labels'] = batch['patient_roi_labels']
 
                     # call prediction pipeline and store results in dict.
                     results_dict = self.predict_patient(batch)
-                    dict_of_patient_results[batch['pid']]['results_list'].append({"boxes": results_dict['boxes']})
+                    dict_of_patient_results[batch['pid']]['results_dicts'].append({"boxes": results_dict['boxes']})
 
+                    if i in plot_batches and (not self.patched_patient or 'patient_data' in batch.keys()):
+                        try:
+                            # view qualitative results of random test case
+                            out_file = os.path.join(self.example_plot_dir,
+                                                    'batch_example_test_{}_rank_{}.png'.format(self.cf.fold, rank_ix))
+                            plot_batch_prediction(batch, results_dict, self.cf, outfile=out_file)
+                        except Exception as e:
+                            self.logger.info("WARNING: error in plotting example test batch: {}".format(e))
 
 
         self.logger.info('finished predicting test set. starting post-processing of predictions.')
@@ -170,10 +185,10 @@ class Predictor:
         # if provided, add ground truth boxes for evaluation.
         for pid, p_dict in dict_of_patient_results.items():
 
-            tmp_ens_list = p_dict['results_list']
+            tmp_ens_list = p_dict['results_dicts']
             results_dict = {}
             # collect all boxes/seg_preds of same batch_instance over temporal instances.
-            b_size = len(tmp_ens_list[0])
+            b_size = len(tmp_ens_list[0]["boxes"])
             results_dict['boxes'] = [[item for rank_dict in tmp_ens_list for item in rank_dict["boxes"][batch_instance]]
                                      for batch_instance in range(b_size)]
 
@@ -188,7 +203,6 @@ class Predictor:
                     results_dict['boxes'][b].append({'box_coords': p_dict['patient_bb_target'][b][t],
                                                      'box_label': p_dict['patient_roi_labels'][b][t],
                                                      'box_type': 'gt'})
-
             results_per_patient.append([results_dict, pid])
 
         # save out raw predictions.
@@ -619,10 +633,13 @@ def merge_2D_to_3D_preds_per_patient(inputs):
             out_patient_results_list.append({'box_type': 'det', 'box_coords': list(box_coords[kix]) + kz,
                                              'box_score': box_scores[kix], 'box_pred_class_id': cl})
 
-    out_patient_results_list += [box for b in in_patient_results_list for box in b if box['box_type'] == 'gt']
-    out_patient_results_list = [out_patient_results_list] # add dummy batch dimension 1 for 3D.
+    gt_boxes = [box for b in in_patient_results_list for box in b if box['box_type'] == 'gt']
+    if len(gt_boxes) > 0:
+        assert np.all([len(box["box_coords"]) == 6 for box in gt_boxes]), "expanded preds to 3D but GT is 2D."
+    out_patient_results_list += gt_boxes
 
-    return [out_patient_results_list, pid]
+    # add dummy batch dimension 1 for 3D.
+    return [[out_patient_results_list], pid]
 
 
 

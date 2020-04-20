@@ -42,7 +42,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_unet'
+        self.model = 'mrcnn'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -138,7 +138,7 @@ class configs(DefaultConfigs):
         self.save_n_models = 5
         self.test_n_epochs = 5
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
-        self.min_save_thresh = 0 if self.dim == 2 else 0
+        self.min_save_thresh = 1 if self.dim == 2 else 1
 
         self.report_score_level = ['patient', 'rois']  # choose list from 'patient', 'rois'
         self.class_dict = {1: 'benign', 2: 'malignant'}  # 0 is background.

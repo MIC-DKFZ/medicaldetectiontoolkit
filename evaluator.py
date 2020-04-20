@@ -37,6 +37,14 @@ class Evaluator():
         self.logger = logger
         self.mode = mode
 
+        self.plot_dir = self.cf.test_dir if self.mode == "test" else self.cf.plot_dir
+        if self.cf.plot_prediction_histograms:
+            self.hist_dir = os.path.join(self.plot_dir, 'histograms')
+            os.makedirs(self.hist_dir, exist_ok=True)
+        if self.cf.plot_stat_curves:
+            self.curves_dir = os.path.join(self.plot_dir, 'stat_curves')
+            os.makedirs(self.curves_dir, exist_ok=True)
+
 
     def eval_losses(self, batch_res_dicts):
         if hasattr(self.cf, "losses_to_monitor"):
@@ -321,9 +329,8 @@ class Evaluator():
                             stats_dict['auc'] if stats_dict['auc'] > 0 else np.nan)
 
                 if self.cf.plot_prediction_histograms:
-                    out_filename = os.path.join(
-                        self.cf.plot_dir, 'pred_hist_{}_{}_{}_cl{}'.format(
-                            self.cf.fold, 'val' if 'val' in self.mode else self.mode, score_level, cl))
+                    out_filename = os.path.join(self.hist_dir, 'pred_hist_{}_{}_{}_cl{}'.format(
+                        self.cf.fold, 'val' if 'val' in self.mode else self.mode, score_level, cl))
                     type_list = None if score_level == 'patient' else spec_df.det_type.tolist()
                     plotting.plot_prediction_hist(spec_df.class_label.tolist(), spec_df.pred_score.tolist(), type_list, out_filename)
 
@@ -340,7 +347,7 @@ class Evaluator():
                     self.logger.info('results from scanning over det_threshs:', [[i, j] for i, j in zip(conf_threshs, aps)])
 
         if self.cf.plot_stat_curves:
-            out_filename = os.path.join(self.cf.plot_dir, '{}_{}_stat_curves'.format(self.cf.fold, self.mode))
+            out_filename = os.path.join(self.curves_dir, '{}_{}_stat_curves'.format(self.cf.fold, self.mode))
             plotting.plot_stat_curves(all_stats, out_filename)
 
 
@@ -370,10 +377,10 @@ class Evaluator():
         """
         if internal_df:
 
-            self.test_df.to_pickle(os.path.join(self.cf.exp_dir, '{}_test_df.pickle'.format(self.cf.fold)))
+            self.test_df.to_pickle(os.path.join(self.cf.test_dir, '{}_test_df.pickle'.format(self.cf.fold)))
             stats, _ = self.return_metrics()
 
-            with open(os.path.join(self.cf.exp_dir, 'results.txt'), 'a') as handle:
+            with open(os.path.join(self.cf.test_dir, 'results.txt'), 'a') as handle:
                 handle.write('\n****************************\n')
                 handle.write('\nresults for fold {} \n'.format(self.cf.fold))
                 handle.write('\n****************************\n')
@@ -381,9 +388,9 @@ class Evaluator():
                 for s in stats:
                     handle.write('AUC {:0.4f}  AP {:0.4f} {} \n'.format(s['auc'], s['ap'], s['name']))
 
-        fold_df_paths = [ii for ii in os.listdir(self.cf.exp_dir) if 'test_df.pickle' in ii]
+        fold_df_paths = [ii for ii in os.listdir(self.cf.test_dir) if 'test_df.pickle' in ii]
         if len(fold_df_paths) == self.cf.n_cv_splits:
-            with open(os.path.join(self.cf.exp_dir, 'results.txt'), 'a') as handle:
+            with open(os.path.join(self.cf.test_dir, 'results.txt'), 'a') as handle:
                 self.cf.fold = 'overall'
                 dfs_list = [pd.read_pickle(os.path.join(self.cf.exp_dir, ii)) for ii in fold_df_paths]
                 for ix, df in enumerate(dfs_list):
