@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_net'
+        self.model = 'mrcnn'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -105,7 +105,7 @@ class configs(DefaultConfigs):
         self.start_filts = 48 if self.dim == 2 else 18
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
-        self.norm = None # one of None, 'instance_norm', 'batch_norm'
+        self.norm = "instance_norm" # one of None, 'instance_norm', 'batch_norm'
         self.weight_decay = 3e-5
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
@@ -206,7 +206,7 @@ class configs(DefaultConfigs):
 
     def add_det_unet_configs(self):
 
-        self.learning_rate = [1e-4] * self.num_epochs
+        self.learning_rate = [3e-4] * self.num_epochs
 
         # aggregation from pixel perdiction to object scores (connected component). One of ['max', 'median']
         self.aggregation_operation = 'max'
@@ -220,7 +220,7 @@ class configs(DefaultConfigs):
         # if <1, false positive predictions in foreground are penalized less.
         self.fp_dice_weight = 1 if self.dim == 2 else 1
 
-        self.wce_weights = [1, 1, 1]
+        self.wce_weights = [0.1, 1, 1]
         self.detection_min_confidence = self.min_det_thresh
 
         # if 'True', loss distinguishes all classes, else only foreground vs. background (class agnostic).

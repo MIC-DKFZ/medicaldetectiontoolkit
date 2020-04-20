@@ -58,9 +58,12 @@ def train(logger):
     # prepare monitoring
     monitor_metrics = utils.prepare_monitoring(cf)
 
-    if cf.resume_to_checkpoint:
-        starting_epoch, monitor_metrics = utils.load_checkpoint(cf.resume_to_checkpoint, net, optimizer)
-        logger.info('resumed to checkpoint {} at epoch {}'.format(cf.resume_to_checkpoint, starting_epoch))
+    if cf.resume:
+        checkpoint_path = os.path.join(cf.fold_dir, "last_checkpoint")
+        starting_epoch, net, optimizer, monitor_metrics = \
+            utils.load_checkpoint(checkpoint_path, net, optimizer)
+        logger.info('resumed from checkpoint {} to epoch {}'.format(checkpoint_path, starting_epoch))
+
 
     logger.info('loading dataset and initializing batch generators...')
     batch_gen = data_loader.get_train_generators(cf, logger)
@@ -164,8 +167,8 @@ if __name__ == '__main__':
                         help='load configs from existing exp_dir instead of source dir. always done for testing, '
                              'but can be set to true to do the same for training. useful in job scheduler environment, '
                              'where source code might change before the job actually runs.')
-    parser.add_argument('--resume_to_checkpoint', type=str, default=None,
-                        help='if resuming to checkpoint, the desired fold still needs to be parsed via --folds.')
+    parser.add_argument('--resume', action="store_true", default=False,
+                        help='if given, resume from checkpoint(s) of the specified folds.')
     parser.add_argument('--exp_source', type=str, default='experiments/toy_exp',
                         help='specifies, from which source experiment to load configs and data_loader.')
     parser.add_argument('--no_benchmark', action='store_true', help="Do not use cudnn.benchmark.")
@@ -173,7 +176,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     folds = args.folds
-    resume_to_checkpoint = args.resume_to_checkpoint
 
     torch.backends.cudnn.benchmark = not args.no_benchmark
 
@@ -200,12 +202,12 @@ if __name__ == '__main__':
         for fold in folds:
             cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
             cf.fold = fold
-            cf.resume_to_checkpoint = resume_to_checkpoint
+            cf.resume = args.resume
             if not os.path.exists(cf.fold_dir):
                 os.mkdir(cf.fold_dir)
             logger.set_logfile(fold=fold)
             train(logger)
-            cf.resume_to_checkpoint = None
+            cf.resume = False
             if args.mode == 'train_test':
                 test(logger)
 

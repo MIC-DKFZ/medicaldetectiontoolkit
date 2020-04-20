@@ -189,7 +189,6 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
     if not os.path.exists(cf.plot_dir):
         os.mkdir(cf.plot_dir)
     cf.experiment_name = exp_path.split("/")[-1]
-    cf.server_env = server_env
     cf.created_fold_id_pickle = False
 
     return cf
@@ -273,13 +272,13 @@ class ModelSelector:
 
 def load_checkpoint(checkpoint_path, net, optimizer):
 
-    checkpoint_params = torch.load(os.path.join(checkpoint_path, 'params.pth'))
-    net.load_state_dict(checkpoint_params['state_dict'])
-    optimizer.load_state_dict(checkpoint_params['optimizer'])
+    checkpoint = torch.load(os.path.join(checkpoint_path, 'params.pth'))
+    net.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
     with open(os.path.join(checkpoint_path, 'monitor_metrics.pickle'), 'rb') as handle:
         monitor_metrics = pickle.load(handle)
-    starting_epoch = checkpoint_params['epoch'] + 1
-    return starting_epoch, monitor_metrics
+    starting_epoch = checkpoint['epoch'] + 1
+    return starting_epoch, net, optimizer, monitor_metrics
 
 
 

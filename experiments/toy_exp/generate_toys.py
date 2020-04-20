@@ -84,7 +84,7 @@ def generate_dataset(cf, exp_name, n_train_images, n_test_images, mode, class_di
     else:
         for inputs in info:
             create_image(*inputs)
-
+    print()
     aggregate_meta_info(train_dir)
     aggregate_meta_info(test_dir)
 
