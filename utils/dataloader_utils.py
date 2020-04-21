@@ -254,18 +254,20 @@ def get_case_identifiers(folder):
     return case_identifiers
 
 
-def convert_to_npy(npz_file):
+def convert_to_npy(npz_file, remove=False):
     identifier = os.path.split(npz_file)[1][:-4]
     if not os.path.isfile(npz_file[:-4] + ".npy"):
         a = np.load(npz_file)[identifier]
         np.save(npz_file[:-4] + ".npy", a)
+    if remove:
+        os.remove(npz_file)
 
 
 def unpack_dataset(folder, threads=8):
     case_identifiers = get_case_identifiers(folder)
     p = Pool(threads)
     npz_files = [os.path.join(folder, i + ".npz") for i in case_identifiers]
-    p.map(convert_to_npy, npz_files)
+    p.starmap(convert_to_npy, [(f, True) for f in npz_files])
     p.close()
     p.join()
 

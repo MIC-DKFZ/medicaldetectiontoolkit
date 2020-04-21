@@ -283,7 +283,7 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
         source_dir, target_dir), shell=True)
     # dutils.unpack_dataset(target_dir)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
+    logger.info("copying data set finished : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
 if __name__=="__main__":

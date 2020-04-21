@@ -574,7 +574,7 @@ def gt_anchor_matching(cf, anchors, gt_boxes, gt_class_ids=None):
 
     # Leave all negative proposals negative now and sample from them in online hard example mining.
     # For positive anchors, compute shift and scale needed to transform them to match the corresponding GT boxes.
-    #ids = np.where(anchor_class_matches > 0)[0]
+    ids = np.where(anchor_class_matches > 0)[0]
     ix = 0  # index into anchor_delta_targets
     for i, a in zip(ids, anchors[ids]):
         # closest gt box (it might have IoU < anchor_matching_iou)
