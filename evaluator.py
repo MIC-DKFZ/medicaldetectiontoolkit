@@ -388,28 +388,35 @@ class Evaluator():
                 for s in stats:
                     handle.write('AUC {:0.4f}  AP {:0.4f} {} \n'.format(s['auc'], s['ap'], s['name']))
 
-        fold_df_paths = [ii for ii in os.listdir(self.cf.test_dir) if 'test_df.pickle' in ii]
-        if len(fold_df_paths) == self.cf.n_cv_splits:
-            with open(os.path.join(self.cf.test_dir, 'results.txt'), 'a') as handle:
-                self.cf.fold = 'overall'
-                dfs_list = [pd.read_pickle(os.path.join(self.cf.exp_dir, ii)) for ii in fold_df_paths]
-                for ix, df in enumerate(dfs_list):
-                    df['fold'] = ix
-                self.test_df = pd.concat(dfs_list)
-                stats, _ = self.return_metrics()
-                handle.write('\n****************************\n')
-                handle.write('\nOVERALL RESULTS \n')
-                handle.write('\n****************************\n')
-                handle.write('\ndf shape \n  \n'.format(self.test_df.shape))
-                for s in stats:
-                    handle.write('\nAUC {:0.4f} (mu {:0.4f})  AP {:0.4f} (mu {:0.4f})  {}\n '
-                                 .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name']))
+            fold_df_paths = [ii for ii in os.listdir(self.cf.test_dir) if ('test_df.pickle' in ii and not 'overall' in ii)]
+            if len(fold_df_paths) == self.cf.n_cv_splits and self.cf.fold == self.cf.n_cv_splits - 1:
                 results_table_path = os.path.join(("/").join(self.cf.exp_dir.split("/")[:-1]), 'results_table.txt')
-                with open(results_table_path, 'a') as handle2:
-                    for s in stats:
-                        handle2.write('\nAUC {:0.4f} (mu {:0.4f})  AP {:0.4f} (mu {:0.4f})  {} {}'
-                                      .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name'], self.cf.exp_dir.split('/')[-1]))
-                    handle2.write('\n')
+                if not self.cf.hold_out_test_set or not self.cf.ensemble_folds:
+                    with open(os.path.join(self.cf.test_dir, 'results.txt'), 'a') as handle:
+                        self.cf.fold = 'overall'
+                        dfs_list = [pd.read_pickle(os.path.join(self.cf.test_dir, ii)) for ii in fold_df_paths]
+                        for ix, df in enumerate(dfs_list):
+                            df['fold'] = ix
+                        self.test_df = pd.concat(dfs_list)
+                        stats, _ = self.return_metrics()
+                        handle.write('\n****************************\n')
+                        handle.write('\nOVERALL RESULTS \n')
+                        handle.write('\n****************************\n')
+                        handle.write('\ndf shape \n  \n'.format(self.test_df.shape))
+                        for s in stats:
+                            handle.write('\nAUC {:0.4f} (mu {:0.4f})  AP {:0.4f} (mu {:0.4f})  {}\n '
+                                         .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name']))
+                    with open(results_table_path, 'a') as handle2:
+                        for s in stats:
+                            handle2.write('\nAUC {:0.4f} (mu {:0.4f})\t  AP {:0.4f} (mu {:0.4f})\t {} {}'
+                                          .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name'], self.cf.exp_dir.split('/')[-1]))
+                        handle2.write('\n')
+                else:
+                    with open(results_table_path, 'a') as handle2:
+                        for s in stats:
+                            handle2.write('\nAUC {:0.4f} \t\t\t AP {:0.4f} \t\t\t {} {}'
+                                          .format(s['auc'], s['ap'], s['name'], self.cf.exp_dir.split('/')[-1]))
+                        handle2.write('\n')
 
 
 

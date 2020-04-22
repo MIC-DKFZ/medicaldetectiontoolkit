@@ -183,7 +183,7 @@ else
 		echo "You need to explicitly specify folds if you would like to resume from a checkpoint. Exiting."
 		exit
 	fi
-	out_file=${exp_dir}/lsf_output.out
+	out_file=${exp_dir}/logs/lsf_output.out
 	bsub_opts="$bsub_opts -J '${dataset_name} ${exp_name}  folds ${folds} ${mode}' -oo '${out_file}'"
 	eval "${bsub_opts} sh cluster_runner_meddec.sh ${source_dir} ${exp_dir} ${dataset_abs_path} ${mode} ${folds} ${resume}"
 	echo "Started in no parallel, folds:" ${folds}

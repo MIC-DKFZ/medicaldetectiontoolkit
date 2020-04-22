@@ -34,7 +34,6 @@ class configs(DefaultConfigs):
         #         I/O           #
         #########################
 
-
         # one out of [2, 3]. dimension the model operates in.
         self.dim = 2
 

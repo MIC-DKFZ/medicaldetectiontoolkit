@@ -184,10 +184,10 @@ if __name__ == '__main__':
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, args.use_stored_settings)
         if args.dev:
             folds = [0,1]
-            cf.batch_size, cf.num_epochs, cf.min_save_thresh, cf.save_n_models = 3 if cf.dim==2 else 1, 1, 0, 1
+            cf.batch_size, cf.num_epochs, cf.min_save_thresh, cf.save_n_models = 3 if cf.dim==2 else 1, 1, 0, 2
             cf.num_train_batches, cf.num_val_batches, cf.max_val_patients = 5, 1, 1
             cf.test_n_epochs =  cf.save_n_models
-            cf.max_test_patients = 1
+            cf.max_test_patients = 2
 
         cf.data_dest = args.data_dest
         logger = utils.get_logger(cf.exp_dir, cf.server_env)
@@ -216,7 +216,7 @@ if __name__ == '__main__':
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, is_training=False, use_stored_settings=True)
         if args.dev:
             folds = [0,1]
-            cf.test_n_epochs =  1; cf.max_test_patients = 1
+            cf.test_n_epochs = 2; cf.max_test_patients = 2
 
         cf.data_dest = args.data_dest
         logger = utils.get_logger(cf.exp_dir, cf.server_env)
@@ -238,17 +238,20 @@ if __name__ == '__main__':
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, is_training=False, use_stored_settings=True)
         logger = utils.get_logger(cf.exp_dir, cf.server_env)
 
-        if cf.hold_out_test_set:
-            cf.folds = args.folds
+        if args.dev:
+            cf.test_n_epochs = 2
+
+        if cf.hold_out_test_set and cf.ensemble_folds:
+            # create and save (unevaluated) predictions across all folds
             predictor = Predictor(cf, net=None, logger=logger, mode='analysis')
             results_list = predictor.load_saved_predictions(apply_wbc=True)
             utils.create_csv_output([(res_dict["boxes"], pid) for res_dict, pid in results_list], cf, logger)
-
             logger.info('starting evaluation...')
-            cf.fold = "overall"
+            cf.fold = 'overall_hold_out'
             evaluator = Evaluator(cf, logger, mode='test')
             evaluator.evaluate_predictions(results_list)
             evaluator.score_test_df()
+
         else:
             fold_dirs = sorted([os.path.join(cf.exp_dir, f) for f in os.listdir(cf.exp_dir) if
                          os.path.isdir(os.path.join(cf.exp_dir, f)) and f.startswith("fold")])

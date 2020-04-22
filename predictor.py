@@ -250,8 +250,9 @@ class Predictor:
         """
 
         # load predictions for a single test-set fold.
-        if not self.cf.hold_out_test_set:
-            with open(os.path.join(self.cf.fold_dir, 'raw_pred_boxes_list.pickle'), 'rb') as handle:
+        results_file = 'raw_pred_boxes_hold_out_list.pickle' if self.cf.hold_out_test_set else 'raw_pred_boxes_list.pickle'
+        if not self.cf.hold_out_test_set or not self.cf.ensemble_folds:
+            with open(os.path.join(self.cf.fold_dir, results_file), 'rb') as handle:
                 results_list = pickle.load(handle)
             box_results_list = [(res_dict["boxes"], pid) for res_dict, pid in results_list]
             da_factor = 4 if self.cf.test_aug else 1
@@ -262,7 +263,7 @@ class Predictor:
         # if hold out test set was perdicted, aggregate predictions of all trained models
         # corresponding to all CV-folds and flatten them.
         else:
-            self.logger.info("loading saved predictions of hold-out test set")
+            self.logger.info("loading saved predictions of hold-out test set and ensembling over folds.")
             fold_dirs = sorted([os.path.join(self.cf.exp_dir, f) for f in os.listdir(self.cf.exp_dir) if
                                 os.path.isdir(os.path.join(self.cf.exp_dir, f)) and f.startswith("fold")])
 
@@ -271,7 +272,7 @@ class Predictor:
             for fold in range(self.cf.n_cv_splits):
                 fold_dir = os.path.join(self.cf.exp_dir, 'fold_{}'.format(fold))
                 if fold_dir in fold_dirs:
-                    with open(os.path.join(fold_dir, 'raw_pred_boxes_hold_out_list.pickle'), 'rb') as handle:
+                    with open(os.path.join(fold_dir, results_file), 'rb') as handle:
                         fold_list = pickle.load(handle)
                         results_list += fold_list
                         folds_loaded += 1

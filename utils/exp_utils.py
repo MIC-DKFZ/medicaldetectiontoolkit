@@ -315,7 +315,7 @@ def create_csv_output(results_list, cf, logger):
     :param results_list: [[patient_results, patient_id], [patient_results, patient_id], ...]
     """
 
-    logger.info('creating csv output file at {}'.format(os.path.join(cf.exp_dir, 'results.csv')))
+    logger.info('creating csv output file at {}'.format(os.path.join(cf.test_dir, 'results.csv')))
     predictions_df = pd.DataFrame(columns = ['patientID', 'predictionID', 'coords', 'score', 'pred_classID'])
     for r in results_list:
 

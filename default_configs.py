@@ -91,6 +91,8 @@ class DefaultConfigs:
         self.hold_out_test_set = False
 
         # if hold_out_test_set provided, ensemble predictions over models of all trained cv-folds.
+        # implications for hold-out test sets: if True, evaluate folds separately on the test set, aggregate only the
+        # evaluations. if False, aggregate the raw predictions across all folds, then evaluate.
         self.ensemble_folds = False
 
         # color specifications for all box_types in prediction_plot.
