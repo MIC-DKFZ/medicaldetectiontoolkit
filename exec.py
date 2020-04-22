@@ -44,7 +44,8 @@ def train(logger):
         cf.dim, cf.fold, cf.exp_dir, cf.model))
 
     net = model.net(cf, logger).cuda()
-    optimizer = torch.optim.AdamW(net.parameters(), lr=cf.learning_rate[0], weight_decay=cf.weight_decay)
+    optimizer = torch.optim.AdamW(utils.parse_params_for_optim(net, weight_decay=cf.weight_decay,
+                                                               exclude_from_wd=("norm",)), lr=cf.learning_rate[0])
     if cf.dynamic_lr_scheduling:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode, factor=cf.lr_decay_factor,
                                                                patience=cf.scheduling_patience)

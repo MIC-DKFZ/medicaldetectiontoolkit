@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+from typing import Iterable
 import sys
 import subprocess
 import os
@@ -207,6 +208,46 @@ def import_module(name, path):
     spec.loader.exec_module(module)
     return module
 
+def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclude_from_wd: Iterable = ("norm",)):
+    """Format network parameters for the optimizer.
+    Convenience function to include options for group-specific settings like weight decay.
+    :param net:
+    :param weight_decay:
+    :param exclude_from_wd: List of strings of parameter-group names to exclude from weight decay. Options: "norm", "bias".
+    :return:
+    """
+    # pytorch implements parameter groups as dicts {'params': ...} and
+    # weight decay as p.data.mul_(1 - group['lr'] * group['weight_decay'])
+    norm_types = [torch.nn.BatchNorm1d, torch.nn.BatchNorm2d, torch.nn.BatchNorm3d,
+                  torch.nn.InstanceNorm1d, torch.nn.InstanceNorm2d, torch.nn.InstanceNorm3d,
+                  torch.nn.LayerNorm, torch.nn.GroupNorm, torch.nn.SyncBatchNorm, torch.nn.LocalResponseNorm
+                  ]
+    level_map = {"bias": "weight",
+                 "norm": "module"}
+    type_map = {"norm": norm_types}
+
+    exclude_from_wd = [str(name).lower() for name in exclude_from_wd]
+    exclude_weight_names = [k for k, v in level_map.items() if k in exclude_from_wd and v == "weight"]
+    exclude_module_types = tuple([type_ for k, v in level_map.items() if (k in exclude_from_wd and v == "module")
+                                  for type_ in type_map[k]])
+
+    if exclude_from_wd:
+        print("excluding {} from weight decay.".format(exclude_from_wd))
+
+    with_dec, no_dec = [], []
+    for module in net.modules():
+        if isinstance(module, exclude_module_types):
+            no_dec.extend(module.parameters())
+        else:
+            for param_name, param in module.named_parameters():
+                if np.any([ename in param_name for ename in exclude_weight_names]):
+                    no_dec.append(param)
+                else:
+                    with_dec.append(param)
+
+    groups = [{'params': gr, 'weight_decay': wd} for gr, wd in [(no_dec, 0.), (with_dec, weight_decay)] if len(gr) > 0]
+
+    return groups
 
 
 class ModelSelector:

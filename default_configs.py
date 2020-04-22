@@ -59,6 +59,8 @@ class DefaultConfigs:
         #########################
 
         self.weight_decay = 0.0
+        # what weight or layer types to exclude from weight decay. options: ["bias", "norm"].
+        self.exclude_from_wd = ("norm",)
 
         # nonlinearity to be applied after convs with nonlinearity. one of 'relu' or 'leaky_relu'
         self.relu = 'relu'
