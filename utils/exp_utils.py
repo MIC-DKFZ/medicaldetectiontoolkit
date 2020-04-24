@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from typing import Iterable
+from typing import Iterable, Tuple, Any
 import sys
 import subprocess
 import os
@@ -208,6 +208,21 @@ def import_module(name, path):
     spec.loader.exec_module(module)
     return module
 
+
+def set_params_flag(module: torch.nn.Module, flag: Tuple[str, Any], check_overwrite: bool = True):
+    """Set an attribute for all module parameters.
+
+    :param flag: tuple (str attribute name : attr value)
+    :param check_overwrite: if True, assert that attribute not already exists.
+
+    """
+    for param in module.parameters():
+        if check_overwrite:
+            assert not hasattr(param, flag[0]), \
+                "param {} already has attr {} (w/ val {})".format(param, flag[0], getattr(param, flag[0]))
+        setattr(param, flag[0], flag[1])
+    return module
+
 def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclude_from_wd: Iterable = ("norm",)):
     """Format network parameters for the optimizer.
     Convenience function to include options for group-specific settings like weight decay.
@@ -234,19 +249,26 @@ def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclu
     if exclude_from_wd:
         print("excluding {} from weight decay.".format(exclude_from_wd))
 
-    with_dec, no_dec = [], []
     for module in net.modules():
         if isinstance(module, exclude_module_types):
-            no_dec.extend(module.parameters())
+            set_params_flag(module, ("no_wd", True))
+    for param_name, param in net.named_parameters():
+        if np.any([ename in param_name for ename in exclude_weight_names]):
+            setattr(param, "no_wd", True)
+
+    with_dec, no_dec = [], []
+    for param in net.parameters():
+        if hasattr(param, "no_wd") and param.no_wd == True:
+            no_dec.append(param)
         else:
-            for param_name, param in module.named_parameters():
-                if np.any([ename in param_name for ename in exclude_weight_names]):
-                    no_dec.append(param)
-                else:
-                    with_dec.append(param)
+            with_dec.append(param)
+    orig_ps = sum(p.numel() for p in net.parameters())
+    with_ps = sum(p.numel() for p in with_dec)
+    wo_ps = sum(p.numel() for p in no_dec)
+    assert orig_ps == with_ps + wo_ps, "orig n parameters {} unequals sum of with wd {} and w/o wd {}."\
+        .format(orig_ps, with_ps, wo_ps)
 
-    groups = [{'params': gr, 'weight_decay': wd} for gr, wd in [(no_dec, 0.), (with_dec, weight_decay)] if len(gr) > 0]
-
+    groups = [{'params': gr, 'weight_decay': wd} for (gr, wd) in [(no_dec, 0.), (with_dec, weight_decay)] if len(gr)>0]
     return groups
 
 

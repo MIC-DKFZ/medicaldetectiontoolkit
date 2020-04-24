@@ -39,10 +39,10 @@ class configs(DefaultConfigs):
 
 
         # one out of [2, 3]. dimension the model operates in.
-        self.dim = 2
+        self.dim = 3
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'mrcnn'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -73,10 +73,10 @@ class configs(DefaultConfigs):
         self.n_channels = len(self.channels)
 
         # patch_size to be used for training. pre_crop_size is the patch_size before data augmentation.
-        self.pre_crop_size_2D = [300, 300]
-        self.patch_size_2D = [288, 288]
-        self.pre_crop_size_3D = [156, 156, 96]
-        self.patch_size_3D = [128, 128, 64]
+        self.pre_crop_size_2D = [340, 340]
+        self.patch_size_2D = [320, 320]
+        self.pre_crop_size_3D = [180, 180, 100]
+        self.patch_size_3D = [160, 160, 96]
         self.patch_size = self.patch_size_2D if self.dim == 2 else self.patch_size_3D
         self.pre_crop_size = self.pre_crop_size_2D if self.dim == 2 else self.pre_crop_size_3D
 
@@ -101,7 +101,7 @@ class configs(DefaultConfigs):
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 1e-5
+        self.weight_decay = 1e-7
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
         self.weight_init = None
@@ -110,13 +110,13 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 100
+        self.num_epochs = 80
         self.num_train_batches = 200 if self.dim == 2 else 300
         self.batch_size = 20 if self.dim == 2 else 8
 
         self.do_validation = True
         # decide whether to validate on entire patient volumes (like testing) or sampled patches (like training)
-        # the former is morge accurate, while the latter is faster (depending on volume size)
+        # the former is more accurate, while the latter is faster (depending on volume size)
         self.val_mode = 'val_sampling' # one of 'val_sampling' , 'val_patient'
         if self.val_mode == 'val_patient':
             self.max_val_patients = 50  # if 'None' iterates over entire val_set once.
@@ -124,9 +124,9 @@ class configs(DefaultConfigs):
             self.num_val_batches = 50
 
         # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
-        self.dynamic_lr_scheduling = True
-        self.lr_decay_factor = 0.5
-        self.scheduling_patience = np.ceil(6000 / (self.num_train_batches * self.batch_size))
+        self.dynamic_lr_scheduling = False
+        self.lr_decay_factor = 0.25
+        self.scheduling_patience = np.ceil(16000 / (self.num_train_batches * self.batch_size))
         self.scheduling_criterion = 'malignant_ap'
         self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
@@ -135,8 +135,8 @@ class configs(DefaultConfigs):
         #########################
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
-        self.save_n_models = 5
-        self.test_n_epochs = 5
+        self.save_n_models = 4
+        self.test_n_epochs = 2
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
         self.min_save_thresh = 1 if self.dim == 2 else 1
 
@@ -261,7 +261,7 @@ class configs(DefaultConfigs):
         self.rpn_nms_threshold = 0.7 if self.dim == 2 else 0.7
 
         # loss sampling settings.
-        self.rpn_train_anchors_per_image = 32  #per batch element
+        self.rpn_train_anchors_per_image = 64  #per batch element
         self.train_rois_per_image = 6 #per batch element
         self.roi_positive_ratio = 0.5
         self.anchor_matching_iou = 0.7
