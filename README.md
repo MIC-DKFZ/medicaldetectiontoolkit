@@ -39,19 +39,17 @@ virtualenv -p python3.7 mdt
 source mdt/bin/activate
 python setup.py install
 ```
+##### Custom Extensions
 This framework uses two custom mixed C++/CUDA extensions: Non-maximum suppression (NMS) and RoIAlign. Both are adapted from the original pytorch extensions (under torchvision.ops.boxes and ops.roialign).
-The extensions are automatically compiled from the provided source files under RegRCNN/custom_extensions with above setup.py. 
-Your system is required to have a compatible CUDA compiler (nvcc).
+The extensions are automatically compiled from the provided source files under medicaldetectiontoolkit/custom_extensions with above setup.py. 
+However, the extensions need to be compiled specifically for certain GPU architectures. Hence, please ensure that the architectures you need are included in your shell's
+environment variable ```TORCH_CUDA_ARCH_LIST``` before compilation. 
+
+Example: You want to use the modules with the new TITAN RTX GPU, which has 
+Compute Capability 7.5 (Turing Architecture), but sometimes you also want to use it with a TITAN Xp (6.1, Pascal). Before installation you need to
+```export TORCH_CUDA_ARCH_LIST="6.1;7.5"```. A link list of GPU model names to Compute Capability can be found here: https://developer.nvidia.com/cuda-gpus. 
 Note: If you'd like to import the raw extensions (not the wrapper modules), be sure to import torch first.
 
-Please note, if you attempt to install the framework via pip, you need to:
-1. instead of executing above line `python setup.py install` execute `pip install .`,
-2. manually install the custom extensions. This can be done from source by
-    ```
-    pip install ./custom_extensions/nms
-    pip install ./custom_extensions/roi_align/2D
-    pip install ./custom_extensions/roi_align/3D
-    ```
 
 ## Prepare the Data
 This framework is meant for you to be able to train models on your own data sets. 

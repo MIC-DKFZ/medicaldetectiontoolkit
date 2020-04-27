@@ -39,10 +39,10 @@ class configs(DefaultConfigs):
 
 
         # one out of [2, 3]. dimension the model operates in.
-        self.dim = 3
+        self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'retina_unet'
+        self.model = 'mrcnn'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -73,10 +73,10 @@ class configs(DefaultConfigs):
         self.n_channels = len(self.channels)
 
         # patch_size to be used for training. pre_crop_size is the patch_size before data augmentation.
-        self.pre_crop_size_2D = [340, 340]
-        self.patch_size_2D = [320, 320]
-        self.pre_crop_size_3D = [180, 180, 100]
-        self.patch_size_3D = [160, 160, 96]
+        self.pre_crop_size_2D = [300, 300]
+        self.patch_size_2D = [288, 288]
+        self.pre_crop_size_3D = [156, 156, 96]
+        self.patch_size_3D = [128, 128, 64]
         self.patch_size = self.patch_size_2D if self.dim == 2 else self.patch_size_3D
         self.pre_crop_size = self.pre_crop_size_2D if self.dim == 2 else self.pre_crop_size_3D
 
@@ -101,7 +101,7 @@ class configs(DefaultConfigs):
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 1e-7
+        self.weight_decay = 1e-8
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
         self.weight_init = None
@@ -136,7 +136,7 @@ class configs(DefaultConfigs):
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
         self.save_n_models = 4
-        self.test_n_epochs = 2
+        self.test_n_epochs = 4
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
         self.min_save_thresh = 1 if self.dim == 2 else 1
 
