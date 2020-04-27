@@ -40,7 +40,6 @@ class DefaultConfigs:
         if server_env:
             self.source_dir = '/home/jaegerp/code/mamma_code/medicaldetectiontoolkit'
 
-
         #########################
         #      Data Loader      #
         #########################

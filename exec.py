@@ -94,8 +94,8 @@ def train(logger):
         _, monitor_metrics['train'] = train_evaluator.evaluate_predictions(train_results_list, monitor_metrics['train'])
 
         logger.info('generating training example plot.')
-        plot_batch_prediction(batch, results_dict, cf, outfile=os.path.join(
-            cf.plot_dir, 'pred_example_{}_train.png'.format(cf.fold)))
+        utils.split_off_process(plot_batch_prediction, batch, results_dict, cf, outfile=os.path.join(
+           cf.plot_dir, 'pred_example_{}_train.png'.format(cf.fold)))
 
         train_time = time.time() - start_time
 
@@ -128,7 +128,7 @@ def train(logger):
             batch = next(batch_gen['val_sampling'])
             results_dict = net.train_forward(batch, is_validation=True)
             logger.info('generating validation-sampling example plot.')
-            plot_batch_prediction(batch, results_dict, cf, outfile=os.path.join(
+            utils.split_off_process(plot_batch_prediction, batch, results_dict, cf, outfile=os.path.join(
                 cf.plot_dir, 'pred_example_{}_val.png'.format(cf.fold)))
 
         # -------------- scheduling -----------------
@@ -174,6 +174,7 @@ if __name__ == '__main__':
     parser.add_argument('--exp_source', type=str, default='experiments/toy_exp',
                         help='specifies, from which source experiment to load configs and data_loader.')
     parser.add_argument('--no_benchmark', action='store_true', help="Do not use cudnn.benchmark.")
+    parser.add_argument('--cuda_device', type=int, default=0, help="Index of CUDA device to use.")
     parser.add_argument('-d', '--dev', default=False, action='store_true', help="development mode: shorten everything")
 
     args = parser.parse_args()
@@ -195,23 +196,25 @@ if __name__ == '__main__':
         logger = utils.get_logger(cf.exp_dir, cf.server_env)
         logger.info("cudnn benchmark: {}, deterministic: {}.".format(torch.backends.cudnn.benchmark,
                                                                      torch.backends.cudnn.deterministic))
+        logger.info("sending tensors to CUDA device: {}.".format(torch.cuda.get_device_name(args.cuda_device)))
         data_loader = utils.import_module('dl', os.path.join(args.exp_source, 'data_loader.py'))
         model = utils.import_module('model', cf.model_path)
         logger.info("loaded model from {}".format(cf.model_path))
         if folds is None:
             folds = range(cf.n_cv_splits)
 
-        for fold in folds:
-            cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
-            cf.fold = fold
-            cf.resume = args.resume
-            if not os.path.exists(cf.fold_dir):
-                os.mkdir(cf.fold_dir)
-            logger.set_logfile(fold=fold)
-            train(logger)
-            cf.resume = False
-            if args.mode == 'train_test':
-                test(logger)
+        with torch.cuda.device(args.cuda_device):
+            for fold in folds:
+                cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
+                cf.fold = fold
+                cf.resume = args.resume
+                if not os.path.exists(cf.fold_dir):
+                    os.mkdir(cf.fold_dir)
+                logger.set_logfile(fold=fold)
+                train(logger)
+                cf.resume = False
+                if args.mode == 'train_test':
+                    test(logger)
 
     elif args.mode == 'test':
 
@@ -228,11 +231,12 @@ if __name__ == '__main__':
         if folds is None:
             folds = range(cf.n_cv_splits)
 
-        for fold in folds:
-            cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
-            cf.fold = fold
-            logger.set_logfile(fold=fold)
-            test(logger)
+        with torch.cuda.device(args.cuda_device):
+            for fold in folds:
+                cf.fold_dir = os.path.join(cf.exp_dir, 'fold_{}'.format(fold))
+                cf.fold = fold
+                logger.set_logfile(fold=fold)
+                test(logger)
 
 
     # load raw predictions saved by predictor during testing, run aggregation algorithms and evaluation.

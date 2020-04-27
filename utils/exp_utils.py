@@ -16,6 +16,7 @@
 from typing import Iterable, Tuple, Any
 import sys
 import subprocess
+from multiprocessing import Process
 import os
 
 import plotting
@@ -30,6 +31,13 @@ import numpy as np
 import torch
 import pandas as pd
 
+def split_off_process(target, *args, daemon=False, **kwargs):
+    """Start a process that won't block parent script.
+    No join(), no return value. If daemon=False: before parent exits, it waits for this to finish.
+    """
+    p = Process(target=target, args=tuple(args), kwargs=kwargs, daemon=daemon)
+    p.start()
+    return p
 
 class CombinedLogger(object):
     """Combine console and tensorboard logger and record system metrics.
@@ -95,8 +103,6 @@ class CombinedLogger(object):
         for key in ['train', 'val']:
             # series = {k:np.array(v[-1]) for (k,v) in metrics[key].items() if not np.isnan(v[-1]) and not 'Bin_Stats' in k}
             loss_series = {}
-            unc_series = {}
-            bin_stat_series = {}
             mon_met_series = {}
             for tag, val in metrics[key].items():
                 val = val[-1]  # maybe remove list wrapping, recording in evaluator?

@@ -111,7 +111,7 @@ if __name__ == '__main__':
     mode_choices = ['donuts_shape', 'donuts_pattern', 'circles_scale']
     parser.add_argument('-m', '--modes', nargs='+', type=str, default=mode_choices, choices=mode_choices)
     parser.add_argument('--noise', action='store_true', help="if given, add noise to the sample bg.")
-    parser.add_argument('--n_train', type=int, default=1500, help="Nr. of train images to generate.")
+    parser.add_argument('--n_train', type=int, default=2500, help="Nr. of train images to generate.")
     parser.add_argument('--n_test', type=int, default=1000, help="Nr. of test images to generate.")
     args = parser.parse_args()
 

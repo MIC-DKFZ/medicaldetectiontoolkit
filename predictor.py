@@ -23,6 +23,7 @@ from multiprocessing import Pool
 import pickle
 import pandas as pd
 
+import utils.exp_utils as utils
 from plotting import plot_batch_prediction
 
 
@@ -173,7 +174,13 @@ class Predictor:
                             # view qualitative results of random test case
                             out_file = os.path.join(self.example_plot_dir,
                                                     'batch_example_test_{}_rank_{}.png'.format(self.cf.fold, rank_ix))
-                            plot_batch_prediction(batch, results_dict, self.cf, outfile=out_file)
+                            plot_results = results_dict.copy()
+                            # seg preds of test augs are included separately. for viewing only show aug 0 (merging
+                            # would need multiple changes, incl in every model).
+                            if plot_results["seg_preds"].shape[1] > 1:
+                                plot_results["seg_preds"] = results_dict['seg_preds'][:,[0]]
+                            utils.split_off_process(plot_batch_prediction, batch, results_dict, self.cf,
+                                                    outfile=out_file)
                         except Exception as e:
                             self.logger.info("WARNING: error in plotting example test batch: {}".format(e))
 
