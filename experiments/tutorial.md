@@ -86,7 +86,7 @@ to see how to include patching. Note that this Iterator is not supposed to go th
 ConvertSegToBoundingBoxCoordinates) therefore need to be applied within this class directly.
 
 
-##Configs
+## Configs
 The current work flow is intended for running multiple experiments with the same dataset but different configs. This is
 done by setting the desired values in `configs.py` in the data set's source directory, then creating an experiment
 via the execution script (`exec.py`, modes "create_exp" or "train" or "train_test"), which copies a snapshot of configs, 
