@@ -6,6 +6,16 @@
 
 Copyright © German Cancer Research Center (DKFZ), <a href="https://www.dkfz.de/en/mic/index.php">Division of Medical Image Computing (MIC)</a>. Please make sure that your usage of this code is in compliance with the code <a href="https://github.com/pfjaeger/medicaldetectiontoolkit/blob/master/LICENSE">license</a>.  
 
+##Release Notes
+**v0.1.0**: Updates to python 3.7, torch 1.4.0, torchvision 0.5.0, entailing a change in custom extensions NMS and RoIAlign 
+        (now in C++ and CUDA). Scalar monitoring is changed to torch-included tensorboard. Added qualitative example 
+        plots for validation and testing. Default optimizer is changed to AdamW instead of Adam to account for
+        fix in weight-decay handling, norms and biases can optionally be excluded from weight decay. Introduced 
+        optional dynamic learning-rate scheduling. A specific CUDA device can be selected via script argument.\
+**v0.0.2**: Small fixes mainly regarding server-env settings (cluster deployment).\
+**v0.0.1**: Original framework as used for the corresponding paper, with Python 3.6 and torch 0.4.1 dependencies, 
+        custom extensions NMS and RoIAlign in C and CUDA, scalar monitoring via plot files.
+        
 ## Overview
 This is a comprehensive framework for object detection featuring:
 - 2D + 3D implementations of prevalent object detectors: e.g. Mask R-CNN [1], Retina Net [2], Retina U-Net [3]. 

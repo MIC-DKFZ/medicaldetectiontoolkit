@@ -38,7 +38,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'mrcnn'
+        self.model = 'ufrcnn'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -104,8 +104,8 @@ class configs(DefaultConfigs):
         self.start_filts = 48 if self.dim == 2 else 18
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
-        self.norm = "batch_norm" # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 3e-5
+        self.norm = None # one of None, 'instance_norm', 'batch_norm'
+        self.weight_decay = 1e-6
         self.exclude_from_wd = ("norm",)
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
@@ -115,7 +115,7 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 24
+        self.num_epochs = 28
         self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 16 if self.dim == 2 else 8
 
@@ -131,7 +131,7 @@ class configs(DefaultConfigs):
         # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
         self.dynamic_lr_scheduling = True
         self.lr_decay_factor = 0.5
-        self.scheduling_patience = np.ceil(3600 / (self.num_train_batches * self.batch_size))
+        self.scheduling_patience = np.ceil(7200 / (self.num_train_batches * self.batch_size))
         self.scheduling_criterion = 'malignant_ap'
         self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
