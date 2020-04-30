@@ -1,0 +1,37 @@
+install:
+ - copy all source files of mdt-public to cluster destination, e.g., by using update_scripts_on_cluster.sh.
+
+ - log in to a COMPUTE NODE, e.g., e132-comp01, not one of the worker/submission nodes since we need CUDA installed. and
+   stay in your home directory.
+
+ - run:
+
+			module load python/3.7.0
+			module load gcc/7.2.0
+
+			virtualenv -p python3.7 .virtualenvs/mdt
+			source .virtualenvs/mdt/bin/activate
+
+			export CUDA_HOME=/usr/local/cuda-${CUDA} 
+			export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5"
+
+			cd mdt-public
+			python setup.py install #--> check that custom extension are installed successfully.
+
+
+
+after install/ usage:
+ - until we have a better solution: submit jobs not from the recommended worker nodes but from a compute node (since we need /datasets to be mounted for job submission).
+ - adjust the paths in job_starter.sh (root_dir and exp_parent_dir) and in cluster_runner_meddec.sh (job_dir=/ssd/<YOUR_USERNAME>/...).
+ - job submission routine:
+	- log in to node
+  	- cd mdt-public
+    - sh job_starter.sh <EXP_SOURCE_NAME> <EXP_DIR_NAME> *OPTIONS, where
+        - <EXP_SOURCE_NAME> is the directory name of the dataset-specific source code (lidc_exp or toy_exp)
+        - <EXP_DIR_NAME> is the name of the experiment directory (not a full or relative path, only the name). The experiment will be located under the parent dir <YOUR_ADJUSTED_ROOT_ON_DATASETS>/experiments.
+        - see job_starter.sh for further optional arguments, e.g. -p <EXP_PARENT_DIR> change the default parent dir.
+        - pass flag -c to indicate you want to create a new experiment.
+    - if a job crashed and you want to continue it from the last checkpoint, simply add --resume to its submission command.
+
+				
+ 

@@ -22,7 +22,7 @@ from default_configs import DefaultConfigs
 
 class configs(DefaultConfigs):
 
-    def __init__(self, server_env=None):
+    def __init__(self, server_env=False):
 
         #########################
         #    Preprocessing      #
@@ -38,7 +38,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'ufrcnn'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -103,12 +103,14 @@ class configs(DefaultConfigs):
 
         self.start_filts = 48 if self.dim == 2 else 18
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
-        self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
+        self.res_architecture = 'resnet50' # 'resnet101', 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 1e-6
+        # 0 for no weight decay
+        self.weight_decay = 3e-6
+        # which weights to exclude from weight decay, options: ["norm", "bias"].
         self.exclude_from_wd = ("norm",)
 
-        # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
+        # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (= default = 'kaiming_uniform')
         self.weight_init = None
 
         #########################
@@ -121,7 +123,7 @@ class configs(DefaultConfigs):
 
         self.do_validation = True
         # decide whether to validate on entire patient volumes (like testing) or sampled patches (like training)
-        # the former is morge accurate, while the latter is faster (depending on volume size)
+        # the former is more accurate, while the latter is faster (depending on volume size)
         self.val_mode = 'val_patient' # one of 'val_sampling' , 'val_patient'
         if self.val_mode == 'val_patient':
             self.max_val_patients = None  # if 'None' iterates over entire val_set once.
@@ -139,7 +141,7 @@ class configs(DefaultConfigs):
         #   Testing / Plotting  #
         #########################
 
-        # set the top-n-epochs to be saved for temporal averaging in testing.
+        # set the top-n epochs to be saved for temporal averaging in testing.
         self.save_n_models = 5
         self.test_n_epochs = 5
 
@@ -197,10 +199,8 @@ class configs(DefaultConfigs):
         {'detection_unet': self.add_det_unet_configs,
          'mrcnn': self.add_mrcnn_configs,
          'ufrcnn': self.add_mrcnn_configs,
-         'ufrcnn_surrounding': self.add_mrcnn_configs,
          'retina_net': self.add_mrcnn_configs,
          'retina_unet': self.add_mrcnn_configs,
-         'prob_detector': self.add_mrcnn_configs,
         }[self.model]()
 
 
@@ -328,7 +328,7 @@ class configs(DefaultConfigs):
             self.num_seg_classes = 3 if self.class_specific_seg_flag else 2
             self.frcnn_mode = True
 
-        if self.model == 'retina_net' or self.model == 'retina_unet' or self.model == 'prob_detector':
+        if self.model == 'retina_net' or self.model == 'retina_unet':
             # implement extra anchor-scales according to retina-net publication.
             self.rpn_anchor_scales['xy'] = [[ii[0], ii[0] * (2 ** (1 / 3)), ii[0] * (2 ** (2 / 3))] for ii in
                                             self.rpn_anchor_scales['xy']]

@@ -386,7 +386,10 @@ class net(nn.Module):
                 'monitor_values': dict of values to be monitored.
         """
         img = batch['data']
-        gt_class_ids = batch['roi_labels']
+        if "roi_labels" in batch.keys():
+            raise Exception("Key for roi-wise class targets changed in v0.1.0 from 'roi_labels' to 'class_target'.\n"
+                            "If you use DKFZ's batchgenerators, please make sure you run version >= 0.20.1.")
+        gt_class_ids = batch['class_target']
         gt_boxes = batch['bb_target']
         var_seg_ohe = torch.FloatTensor(mutils.get_one_hot_encoding(batch['seg'], self.cf.num_seg_classes)).cuda()
         var_seg = torch.LongTensor(batch['seg']).cuda()
@@ -406,7 +409,7 @@ class net(nn.Module):
             if len(gt_boxes[b]) > 0:
                 for ix in range(len(gt_boxes[b])):
                     box_results_list[b].append({'box_coords': batch['bb_target'][b][ix],
-                                                'box_label': batch['roi_labels'][b][ix], 'box_type': 'gt'})
+                                                'box_label': batch['class_target'][b][ix], 'box_type': 'gt'})
 
                 # match gt boxes with anchors to generate targets.
                 anchor_class_match, anchor_target_deltas = mutils.gt_anchor_matching(

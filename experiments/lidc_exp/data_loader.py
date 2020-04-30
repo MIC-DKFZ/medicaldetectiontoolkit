@@ -27,7 +27,6 @@ import pandas as pd
 import pickle
 import time
 import subprocess
-import utils.dataloader_utils as dutils
 
 # batch generator tools from https://github.com/MIC-DKFZ/batchgenerators
 from batchgenerators.dataloading.data_loader import SlimDataLoaderBase
@@ -39,7 +38,8 @@ from batchgenerators.transforms.spatial_transforms import SpatialTransform
 from batchgenerators.transforms.crop_and_pad_transforms import CenterCropTransform
 from batchgenerators.transforms.utility_transforms import ConvertSegToBoundingBoxCoordinates
 
-
+import utils.dataloader_utils as dutils
+import utils.exp_utils as utils
 
 def get_train_generators(cf, logger):
     """
@@ -214,7 +214,7 @@ class BatchGenerator(SlimDataLoaderBase):
     Actual patch_size is obtained after data augmentation.
     :param data: data dictionary as provided by 'load_dataset'.
     :param batch_size: number of patients to sample for the batch
-    :return dictionary containing the batch data (b, c, x, y, (z)) / seg (b, 1, x, y, (z)) / pids / class_target
+    :return dictionary containing the batch data (b, c, y, x(, z)) / seg (b, 1, y, x(, z)) / pids / class_target
     """
     def __init__(self, data, batch_size, cf):
         super(BatchGenerator, self).__init__(data, batch_size)
@@ -240,7 +240,8 @@ class BatchGenerator(SlimDataLoaderBase):
         for b in batch_ixs:
             patient = patients[b][1]
 
-            data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))[np.newaxis] # (c, y, x, z)
+            # data shape: from (z,y,x) to (c, y, x, z).
+            data = np.transpose(np.load(patient['data'], mmap_mode='r'), axes=(1, 2, 0))[np.newaxis]
             seg = np.transpose(np.load(patient['seg'], mmap_mode='r'), axes=(1, 2, 0))
             batch_pids.append(patient['pid'])
             batch_targets.append(patient['class_target'])
@@ -359,7 +360,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
             converter = ConvertSegToBoundingBoxCoordinates(dim=3, get_rois_from_seg_flag=False, class_specific_seg_flag=self.cf.class_specific_seg_flag)
             batch_3D = converter(**batch_3D)
             batch_3D.update({'patient_bb_target': batch_3D['bb_target'],
-                                  'patient_roi_labels': batch_3D['roi_labels'],
+                                  'patient_roi_labels': batch_3D['class_target'],
                                   'original_img_shape': out_data.shape})
 
         if self.cf.dim == 2:
@@ -386,7 +387,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
                                       'original_img_shape': out_data.shape})
             else:
                 batch_2D.update({'patient_bb_target': batch_2D['bb_target'],
-                                 'patient_roi_labels': batch_2D['roi_labels'],
+                                 'patient_roi_labels': batch_2D['class_target'],
                                  'original_img_shape': out_data.shape})
 
         out_batch = batch_3D if self.cf.dim == 3 else batch_2D
@@ -446,7 +447,6 @@ class PatientBatchIterator(SlimDataLoaderBase):
 
 def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
-
     start_time = time.time()
     with open(os.path.join(fold_dir, 'file_list.txt'), 'w') as handle:
         for pid in pids:
@@ -455,14 +455,15 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
     subprocess.call('rsync -av --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
         source_dir, target_dir), shell=True)
-    dutils.unpack_dataset(target_dir)
+    n_threads = 8
+    dutils.unpack_dataset(target_dir, threads=n_threads)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
-        len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
+    t = utils.get_formatted_duration(time.time() - start_time)
+    logger.info("\ncopying and unpacking data set finished using {} threads.\n{} files in target dir: {}. Took {}\n"
+        .format(n_threads, len(copied_files), target_dir, t))
 
 
 if __name__=="__main__":
-    import utils.exp_utils as utils
 
     total_stime = time.time()
 

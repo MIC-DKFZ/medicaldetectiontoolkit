@@ -23,6 +23,7 @@ import torch
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.metrics import roc_curve, precision_recall_curve
 
+import utils.exp_utils as utils
 import utils.model_utils as mutils
 import plotting
 
@@ -333,7 +334,8 @@ class Evaluator():
                     out_filename = os.path.join(self.hist_dir, 'pred_hist_{}_{}_{}_cl{}'.format(
                         self.cf.fold, 'val' if 'val' in self.mode else self.mode, score_level, cl))
                     type_list = None if score_level == 'patient' else spec_df.det_type.tolist()
-                    plotting.plot_prediction_hist(spec_df.class_label.tolist(), spec_df.pred_score.tolist(), type_list, out_filename)
+                    utils.split_off_process(plotting.plot_prediction_hist, spec_df.class_label.tolist(),
+                                            spec_df.pred_score.tolist(), type_list, out_filename)
 
                 all_stats.append(stats_dict)
 
@@ -349,8 +351,7 @@ class Evaluator():
 
         if self.cf.plot_stat_curves:
             out_filename = os.path.join(self.curves_dir, '{}_{}_stat_curves'.format(self.cf.fold, self.mode))
-            plotting.plot_stat_curves(all_stats, out_filename)
-
+            utils.split_off_process(plotting.plot_stat_curves, all_stats, out_filename)
 
         # get average stats over foreground classes on roi level.
         avg_ap = np.mean([d['ap'] for d in all_stats if 'rois' in d['name']])
@@ -436,7 +437,7 @@ class Evaluator():
                     handle.write('AUC {:0.4f}  AP {:0.4f} {} \n'.format(s['auc'], s['ap'], s['name']))
 
             fold_df_paths = [ii for ii in os.listdir(self.cf.test_dir) if ('test_df.pickle' in ii and not 'overall' in ii)]
-            if len(fold_df_paths) == self.cf.n_cv_splits and self.cf.fold == self.cf.n_cv_splits - 1:
+            if len(fold_df_paths) == self.cf.n_cv_splits:
                 results_table_path = os.path.join((os.sep).join(self.cf.exp_dir.split(os.sep)[:-1]), 'results_table.csv')
 
                 if not self.cf.hold_out_test_set or not self.cf.ensemble_folds:

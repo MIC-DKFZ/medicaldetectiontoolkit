@@ -112,12 +112,13 @@ class net(nn.Module):
                                                            'box_score': max_scores[cix][bix][rix],
                                                            'box_pred_class_id': cix + 1,  # add 0 for background.
                                                            'box_type': 'det'})
-
-
+        if "roi_labels" in batch.keys():
+            raise Exception("Key for roi-wise class targets changed in v0.1.0 from 'roi_labels' to 'class_target'.\n"
+                            "If you use DKFZ's batchgenerators, please make sure you run version >= 0.20.1.")
         for bix in range(img.shape[0]):
             for tix in range(len(batch['bb_target'][bix])):
                 results_dict['boxes'][bix].append({'box_coords': batch['bb_target'][bix][tix],
-                                                   'box_label': batch['roi_labels'][bix][tix],
+                                                   'box_label': batch['class_target'][bix][tix],
                                                    'box_type': 'gt'})
 
         # compute segmentation loss as either weighted cross entropy, dice loss, or the sum of both.

@@ -334,6 +334,65 @@ class VerifyFoldSplits(unittest.TestCase):
         self.verify_fold_ids(splits)
 
 
+class CompareFoldSplits(unittest.TestCase):
+    """ Find evtl. differences in cross-val file splits across different experiments.
+    """
+    @staticmethod
+    def group_id_paths(ref_exp_dir, comp_exp_dirs):
+
+        f_name = 'fold_ids.pickle'
+
+        ref_paths = os.path.join(ref_exp_dir, f_name)
+        assert os.path.isfile(ref_paths), "ref file {} does not exist.".format(ref_paths)
+
+
+        ref_paths = [ref_paths for comp_ed in comp_exp_dirs]
+        comp_paths = [os.path.join(comp_ed, f_name) for comp_ed in comp_exp_dirs]
+
+        return zip(ref_paths, comp_paths)
+
+    @staticmethod
+    def comp_fold_ids(mp_input):
+        fold_ids1, fold_ids2 = mp_input
+        with open(fold_ids1, 'rb') as f:
+            fold_ids1 = pickle.load(f)
+        try:
+            with open(fold_ids2, 'rb') as f:
+                fold_ids2 = pickle.load(f)
+        except FileNotFoundError:
+            print("comp file {} does not exist.".format(fold_ids2))
+            return
+
+        n_splits = len(fold_ids1)
+        assert n_splits == len(fold_ids2), "mismatch n splits: ref has {}, comp {}".format(n_splits, len(fold_ids2))
+        # train, val test
+        split_diffs = np.concatenate([np.setdiff1d(fold_ids1[s][assignment], fold_ids2[s][assignment]) for s in range(n_splits) for assignment in range(3)])
+        all_equal = np.any(split_diffs)
+        return (split_diffs, all_equal)
+
+    def iterate_exp_dirs(self, ref_exp, comp_exps, processes=os.cpu_count()):
+
+        grouped_paths = list(self.group_id_paths(ref_exp, comp_exps))
+        print("performing {} comparisons of cross-val file splits".format(len(grouped_paths)))
+        p = Pool(processes)
+        split_diffs = p.map(self.comp_fold_ids, grouped_paths)
+        p.close(); p.join()
+
+        df = pd.DataFrame(index=range(0,len(grouped_paths)), columns=["ref", "comp", "all_equal"])#, "diffs"])
+        for ix, (ref, comp) in enumerate(grouped_paths):
+            df.iloc[ix] = [ref, comp, split_diffs[ix][1]]#, split_diffs[ix][0]]
+
+        print("Any splits not equal?", df.all_equal.any())
+        assert not df.all_equal.any(), "a split set is different from reference split set, {}".format(df[~df.all_equal])
+
+    def test(self):
+        exp_parent_dir = '/home/gregor/networkdrives/E132-Cluster-Projects/lidc_exp/experiments/1x/adamw_nonorm_nosched'
+        ref_exp = '/media/gregor/HDD1/experiments/mdt/lidc_exp/original_paper_settings'
+        comp_exps = [os.path.join(exp_parent_dir, p) for p in os.listdir(exp_parent_dir)]
+        comp_exps = [p for p in comp_exps if os.path.isdir(p) and p != ref_exp]
+        self.iterate_exp_dirs(ref_exp, comp_exps)
+
+
 if __name__=="__main__":
     stime = time.time()
 

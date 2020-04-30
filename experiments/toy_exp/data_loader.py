@@ -191,7 +191,7 @@ class BatchGenerator(SlimDataLoaderBase):
     Actual patch_size is obtained after data augmentation.
     :param data: data dictionary as provided by 'load_dataset'.
     :param batch_size: number of patients to sample for the batch
-    :return dictionary containing the batch data (b, c, x, y, (z)) / seg (b, 1, x, y, (z)) / pids / class_target
+    :return dictionary containing the batch data (b, c, y, x, (z)) / seg (b, 1, y, x, (z)) / pids / class_target
     """
     def __init__(self, data, batch_size, cf):
         super(BatchGenerator, self).__init__(data, batch_size)
@@ -262,7 +262,7 @@ class PatientBatchIterator(SlimDataLoaderBase):
         batch_2D = converter(**batch_2D)
 
         batch_2D.update({'patient_bb_target': batch_2D['bb_target'],
-                         'patient_roi_labels': batch_2D['roi_labels'],
+                         'patient_roi_labels': batch_2D['class_target'],
                          'original_img_shape': out_data.shape})
 
         self.patient_ix += 1

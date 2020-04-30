@@ -49,7 +49,7 @@ if __name__ == "__main__":
     install_reqs = parse_requirements(req_file, exclude=custom_exts)
 
     setup(name='medicaldetectiontoolkit',
-          version='0.0.1',
+          version='0.1.0',
           url="https://github.com/MIC-DKFZ/medicaldetectiontoolkit",
           author='P. Jaeger, G. Ramien, MIC at DKFZ Heidelberg',
           license="Apache 2.0",
@@ -61,6 +61,7 @@ if __name__ == "__main__":
           ],
           packages=find_packages(exclude=['test', 'test.*']),
           install_requires=install_reqs,
+          python_requires=">=3.7"
           )
 
     custom_exts =  ["custom_extensions/nms", "custom_extensions/roi_align/2D", "custom_extensions/roi_align/3D"]

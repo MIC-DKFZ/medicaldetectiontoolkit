@@ -68,7 +68,8 @@ is a wrapper that manages multi-threaded loading (and augmentation).
 the batch is a dictionary with (at least) keys: `"data"`, `"pid"`, `"class_target"` (as well as `"seg"` if using segmentations).
     - `"data"` needs to hold your image (2D or 3D) as a numpy array with dimensions: (b, c, y, x(, z)), where b is the 
     batch dimension (b = batch size), c the channel dimension (if you have multi-modal data c > 1), y, x, z are 
-    the spatial dimensions; z is omitted in case of 2D data.
+    the spatial dimensions; z is omitted in case of 2D data. Since the batchgenerators package uses shape convention (x,y,z), 
+    please make sure you switch augmentation settings explicitly affecting x and y (like rotation angle) accordingly. 
     - `"seg"` has the same format as `"data"`, except that its channel dimension has always size c = 1.
     - `"pid"` is a list of patient or sample identifiers, one per sample, i.e., shape (b,).
     - `"class_target"` which holds, as mentioned in preprocessing, class labels for the RoIs. It's a list of length b, holding
@@ -76,13 +77,11 @@ the batch is a dictionary with (at least) keys: `"data"`, `"pid"`, `"class_targe
     **Note**: the above description only applies if you use ConvertSegToBoundingBoxCoordinates. Class targets after batch 
     generation need to make room for a background class (network heads need to be able to predict class 0 = bg). Since, 
     in preprocessing, we started classes at id 0, we now need to shift them by +1. This is done automatically inside
-    ConvertSegToBoundingBoxCoordinates. That transform also renames `"class_target"` to `"roi_labels"`, which is the label
-    required by the rest of the framework. In case you do not use that transform, please shift and rename the labels
-    in your BatchGenerator.
+    ConvertSegToBoundingBoxCoordinates. In case you do not use that transform, please shift the labels in your BatchGenerator.
 5. Class PatientIterator. This data loader is intended for testing and validation. It needs to provide the same output as 
 above BatchGenerator, however, initial batch size is always limited to one (one patient). Output batch size may vary 
  if patching is applied. Please refer to the LIDC PatientIterator 
-to see how to include patching. Note that this Iterator is not supposed to go through the MTA, transforms (mainly 
+to see how to include patching. Note that this Iterator is _not_ supposed to go through the MTA, transforms (mainly 
 ConvertSegToBoundingBoxCoordinates) therefore need to be applied within this class directly.
 
 

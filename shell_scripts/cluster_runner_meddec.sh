@@ -17,9 +17,6 @@ mode=${4}
 folds=${5}
 resume=$6
 
-#known problem: trap somehow does not execute the rm -r tmp_dir command when using scancel on job
-#trap clean_up EXIT KILL TERM ABRT QUIT
-
 job_dir=/ssd/ramien/${LSB_JOBID}
 
 tmp_dir_data=${job_dir}/data
@@ -39,9 +36,6 @@ export CUDA_CACHE_PATH
 #(tensorboard --logdir ${exp_dir}/.. --port 1337 || echo "tboard startup failed")& # || tensorboard --logdir ${exp_dir}/.. --port 1338)&
 #tboard_pid=$!
 
-#clean_up() {
-#	rm -rf ${job_dir};
-#}
 
 export OMP_NUM_THREADS=1 # this is a work-around fix for batchgenerators to deal with numpy-inherent multi-threading.
 

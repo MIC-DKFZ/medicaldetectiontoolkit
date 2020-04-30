@@ -21,6 +21,7 @@ from scipy.stats import norm
 from collections import OrderedDict
 from multiprocessing import Pool
 import pickle
+from copy import deepcopy
 import pandas as pd
 
 import utils.exp_utils as utils
@@ -103,7 +104,7 @@ class Predictor:
         print('\revaluating patient {} for fold {} '.format(batch['pid'], self.cf.fold), end="", flush=True)
 
         # True if patient is provided in patches and predictions need to be tiled.
-        self.patched_patient = True if 'patch_crop_coords' in list(batch.keys()) else False
+        self.patched_patient = 'patch_crop_coords' in batch.keys()
 
         # forward batch through prediction pipeline.
         results_dict = self.data_aug_forward(batch)
@@ -169,18 +170,25 @@ class Predictor:
                     results_dict = self.predict_patient(batch)
                     dict_of_patient_results[batch['pid']]['results_dicts'].append({"boxes": results_dict['boxes']})
 
-                    if i in plot_batches and (not self.patched_patient or 'patient_data' in batch.keys()):
+                    if i in plot_batches and not self.patched_patient:
+                        # view qualitative results of random test case
+                        # plotting for patched patients is too expensive, thus not done. Change at will.
                         try:
-                            # view qualitative results of random test case
                             out_file = os.path.join(self.example_plot_dir,
-                                                    'batch_example_test_{}_rank_{}.png'.format(self.cf.fold, rank_ix))
-                            plot_results = results_dict.copy()
-                            # seg preds of test augs are included separately. for viewing only show aug 0 (merging
+                                                    'batch_example_test_{}_rank_{}.png'.format(self.cf.fold,
+                                                                                               rank_ix))
+                            results_for_plotting = deepcopy(results_dict)
+                            # seg preds of test augs are included separately. for viewing, only show aug 0 (merging
                             # would need multiple changes, incl in every model).
-                            if plot_results["seg_preds"].shape[1] > 1:
-                                plot_results["seg_preds"] = results_dict['seg_preds'][:,[0]]
-                            utils.split_off_process(plot_batch_prediction, batch, results_dict, self.cf,
-                                                    outfile=out_file)
+                            if results_for_plotting["seg_preds"].shape[1] > 1:
+                                results_for_plotting["seg_preds"] = results_dict['seg_preds'][:, [0]]
+                            for bix in range(batch["seg"].shape[0]): # batch dim should be 1
+                                for tix in range(len(batch['bb_target'][bix])):
+                                    results_for_plotting['boxes'][bix].append({'box_coords': batch['bb_target'][bix][tix],
+                                                                       'box_label': batch['class_target'][bix][tix],
+                                                                       'box_type': 'gt'})
+                            utils.split_off_process(plot_batch_prediction, batch, results_for_plotting, self.cf,
+                                                    outfile=out_file, suptitle="Test plot:\nunmerged TTA overlayed.")
                         except Exception as e:
                             self.logger.info("WARNING: error in plotting example test batch: {}".format(e))
 

@@ -20,7 +20,7 @@ import os
 
 class DefaultConfigs:
 
-    def __init__(self, model, server_env=None, dim=2):
+    def __init__(self, model, server_env=False, dim=2):
         self.server_env = server_env
         #########################
         #         I/O           #
@@ -48,7 +48,7 @@ class DefaultConfigs:
         self.seed = 0
 
         #number of threads for multithreaded batch generation.
-        self.n_workers = os.cpu_count() - 1
+        self.n_workers = 16 if server_env else os.cpu_count()-1
 
         # if True, segmentation losses learn all categories, else only foreground vs. background.
         self.class_specific_seg_flag = False

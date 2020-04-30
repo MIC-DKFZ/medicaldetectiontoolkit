@@ -7,12 +7,18 @@
 Copyright © German Cancer Research Center (DKFZ), <a href="https://www.dkfz.de/en/mic/index.php">Division of Medical Image Computing (MIC)</a>. Please make sure that your usage of this code is in compliance with the code <a href="https://github.com/pfjaeger/medicaldetectiontoolkit/blob/master/LICENSE">license</a>.  
 
 ## Release Notes
-**v0.1.0**: Updates to python 3.7, torch 1.4.0, torchvision 0.5.0, entailing a change in custom extensions NMS and RoIAlign 
-        (now in C++ and CUDA). Scalar monitoring is changed to torch-included tensorboard. Added qualitative example 
-        plots for validation and testing. Default optimizer is changed to AdamW instead of Adam to account for
-        fix in weight-decay handling, norms and biases can optionally be excluded from weight decay. Introduced 
-        optional dynamic learning-rate scheduling. A specific CUDA device can be selected via script argument. Added
-        tutorial.\
+**v0.1.0**: 
+- Updates to python 3.7, torch 1.4.0, torchvision 0.5.0, entailing a change in custom extensions NMS and RoIAlign 
+        (now in C++ and CUDA).
+- Scalar monitoring is changed to torch-included tensorboard. 
+- Added qualitative example plots for validation and testing. 
+- Default optimizer is changed to AdamW instead of Adam to account for fix in weight-decay handling, 
+norms and biases can optionally be excluded from weight decay. 
+- Introduced optional dynamic learning-rate scheduling. 
+- A specific CUDA device can now be selected via script argument.
+- Inside the models, GT class labels identification is changed from `'roi_labels'` to `'class_target'` to streamline naming scheme.
+- Added dataset [tutorial](experiments/tutorial.md).
+
 **v0.0.2**: Small fixes mainly regarding server-env settings (cluster deployment).\
 **v0.0.1**: Original framework as used for the corresponding paper, with Python 3.6 and torch 0.4.1 dependencies, 
         custom extensions NMS and RoIAlign in C and CUDA, scalar monitoring via plot files.
@@ -38,7 +44,7 @@ of Segmentation Supervision for Medical Object Detection" </a>, 2018
 [5] https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py<br/>
 [6] https://github.com/MIC-DKFZ/batchgenerators<br/><br>
 
-A tutorial on how to add your own data set can be found under `experiments/tutorial.md`.
+A tutorial on how to add your own data set can be found under [`experiments/tutorial.md`](experiments/tutorial.md).
 
 ## How to cite this code
 Please cite the original publication [3].

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+from typing import Union
 
 import matplotlib
 matplotlib.use('Agg')
@@ -36,7 +37,8 @@ def suppress_axes_lines(ax):
 
     return
 
-def plot_batch_prediction(batch, results_dict, cf, outfile=None, suptitle=None):
+def plot_batch_prediction(batch: dict, results_dict: dict, cf, outfile: Union[str, None]=None,
+                          suptitle: Union[str, None]=None):
     """
     plot the input images, ground truth annotations, and output predictions of a batch. If 3D batch, plots a 2D projection
     of one randomly sampled element (patient) in the batch. Since plotting all slices of patient volume blows up costs of
@@ -247,7 +249,7 @@ def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figu
         ax1.set_title(exp_name)
 
 
-def plot_prediction_hist(label_list, pred_list, type_list, outfile):
+def plot_prediction_hist(label_list: list, pred_list: list, type_list: list, outfile: str):
     """
     plot histogram of predictions for a specific class.
     :param label_list: list of 1s and 0s specifying whether prediction is a true positive match (1) or a false positive (0).
@@ -280,12 +282,12 @@ def plot_prediction_hist(label_list, pred_list, type_list, outfile):
     plt.close()
 
 
-def plot_stat_curves(stats, outfile):
+def plot_stat_curves(stats: list, outfile: str):
 
     for c in ['roc', 'prc']:
         plt.figure()
         for s in stats:
-            if s[c] is not None:
+            if not (isinstance(s[c], float) and np.isnan(s[c])):
                 plt.plot(s[c][0], s[c][1], label=s['name'] + '_' + c)
         plt.title(outfile.split('/')[-1] + '_' + c)
         plt.legend(loc=3 if c == 'prc' else 4)

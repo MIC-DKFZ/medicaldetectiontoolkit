@@ -22,7 +22,7 @@ from default_configs import DefaultConfigs
 
 class configs(DefaultConfigs):
 
-    def __init__(self, server_env=None):
+    def __init__(self, server_env=False):
 
         #########################
         #    Preprocessing      #
@@ -39,10 +39,10 @@ class configs(DefaultConfigs):
 
 
         # one out of [2, 3]. dimension the model operates in.
-        self.dim = 2
+        self.dim = 3
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
-        self.model = 'mrcnn'
+        self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -101,7 +101,8 @@ class configs(DefaultConfigs):
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
         self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
         self.norm = None # one of None, 'instance_norm', 'batch_norm'
-        self.weight_decay = 1e-8
+        # 0 for no weight decay
+        self.weight_decay = 0
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
         self.weight_init = None
@@ -110,8 +111,8 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 80
-        self.num_train_batches = 200 if self.dim == 2 else 300
+        self.num_epochs = 100
+        self.num_train_batches = 200 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
         self.do_validation = True
@@ -122,6 +123,8 @@ class configs(DefaultConfigs):
             self.max_val_patients = 50  # if 'None' iterates over entire val_set once.
         if self.val_mode == 'val_sampling':
             self.num_val_batches = 50
+
+        self.optimizer = "Adam"
 
         # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
         self.dynamic_lr_scheduling = False
@@ -135,10 +138,10 @@ class configs(DefaultConfigs):
         #########################
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
-        self.save_n_models = 4
-        self.test_n_epochs = 4
+        self.save_n_models = 5
+        self.test_n_epochs = 5
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
-        self.min_save_thresh = 1 if self.dim == 2 else 1
+        self.min_save_thresh = 0 if self.dim == 2 else 0
 
         self.report_score_level = ['patient', 'rois']  # choose list from 'patient', 'rois'
         self.class_dict = {1: 'benign', 2: 'malignant'}  # 0 is background.
@@ -223,7 +226,7 @@ class configs(DefaultConfigs):
     def add_mrcnn_configs(self):
 
         # learning rate is a list with one entry per epoch.
-        self.learning_rate = [3e-4] * self.num_epochs
+        self.learning_rate = [1e-4] * self.num_epochs
 
         # disable the re-sampling of mask proposals to original size for speed-up.
         # since evaluation is detection-driven (box-matching) and not instance segmentation-driven (iou-matching),
@@ -261,7 +264,7 @@ class configs(DefaultConfigs):
         self.rpn_nms_threshold = 0.7 if self.dim == 2 else 0.7
 
         # loss sampling settings.
-        self.rpn_train_anchors_per_image = 64  #per batch element
+        self.rpn_train_anchors_per_image = 6  #per batch element
         self.train_rois_per_image = 6 #per batch element
         self.roi_positive_ratio = 0.5
         self.anchor_matching_iou = 0.7
@@ -318,7 +321,7 @@ class configs(DefaultConfigs):
             self.num_seg_classes = 3 if self.class_specific_seg_flag else 2
             self.frcnn_mode = True
 
-        if self.model == 'retina_net' or self.model == 'retina_unet' or self.model == 'prob_detector':
+        if self.model == 'retina_net' or self.model == 'retina_unet':
             # implement extra anchor-scales according to retina-net publication.
             self.rpn_anchor_scales['xy'] = [[ii[0], ii[0] * (2 ** (1 / 3)), ii[0] * (2 ** (2 / 3))] for ii in
                                             self.rpn_anchor_scales['xy']]

@@ -44,9 +44,18 @@ def train(logger):
         cf.dim, cf.fold, cf.exp_dir, cf.model))
 
     net = model.net(cf, logger).cuda()
-    optimizer = torch.optim.AdamW(utils.parse_params_for_optim(net, weight_decay=cf.weight_decay,
-                                                               exclude_from_wd=cf.exclude_from_wd),
-                                  lr=cf.learning_rate[0])
+    if hasattr(cf, "optimizer") and cf.optimizer.lower() == "adam":
+        logger.info("Using Adam optimizer.")
+        optimizer = torch.optim.Adam(utils.parse_params_for_optim(net, weight_decay=cf.weight_decay,
+                                                                   exclude_from_wd=cf.exclude_from_wd),
+                                      lr=cf.learning_rate[0])
+    else:
+        logger.info("Using AdamW optimizer.")
+        optimizer = torch.optim.AdamW(utils.parse_params_for_optim(net, weight_decay=cf.weight_decay,
+                                                                   exclude_from_wd=cf.exclude_from_wd),
+                                      lr=cf.learning_rate[0])
+
+
     if cf.dynamic_lr_scheduling:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode, factor=cf.lr_decay_factor,
                                                                patience=cf.scheduling_patience)
@@ -123,8 +132,9 @@ def train(logger):
             logger.metrics2tboard(monitor_metrics, global_step=epoch)
 
             epoch_time = time.time() - start_time
-            logger.info('trained epoch {}: took {:.2f} s ({:.2f} s train / {:.2f} s val)'.format(
-                epoch, epoch_time, train_time, epoch_time-train_time))
+            logger.info('trained epoch {}: took {} ({} train / {} val)'.format(
+                epoch, utils.get_formatted_duration(epoch_time, "ms"), utils.get_formatted_duration(train_time, "ms"),
+                utils.get_formatted_duration(epoch_time-train_time, "ms")))
             batch = next(batch_gen['val_sampling'])
             results_dict = net.train_forward(batch, is_validation=True)
             logger.info('generating validation-sampling example plot.')
@@ -287,8 +297,7 @@ if __name__ == '__main__':
     else:
         raise RuntimeError('mode specified in args is not implemented...')
 
-    mins, secs = divmod((time.time() - stime), 60)
-    h, mins = divmod(mins, 60)
-    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+
+    t = utils.get_formatted_duration(time.time() - stime)
     logger.info("{} total runtime: {}".format(os.path.split(__file__)[1], t))
     del logger

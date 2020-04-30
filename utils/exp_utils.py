@@ -13,13 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from typing import Iterable, Tuple, Any
-import sys
+from typing import Iterable, Tuple, Any, Union
+import os, sys
 import subprocess
 from multiprocessing import Process
-import os
 
-import plotting
 import importlib.util
 import pickle
 
@@ -31,19 +29,37 @@ import numpy as np
 import torch
 import pandas as pd
 
-def split_off_process(target, *args, daemon=False, **kwargs):
+def split_off_process(target, *args, daemon: bool=False, **kwargs):
     """Start a process that won't block parent script.
     No join(), no return value. If daemon=False: before parent exits, it waits for this to finish.
+    :param target: the target function of the process.
+    :params *args: args to pass to target.
+    :param daemon: if False: before parent exits, it waits for this process to finish.
+    :params **kwargs: kwargs to pass to target.
     """
     p = Process(target=target, args=tuple(args), kwargs=kwargs, daemon=daemon)
     p.start()
     return p
 
+def get_formatted_duration(seconds: float, format: str="hms") -> str:
+    """Format a time in seconds.
+    :param format: "hms" for hours mins secs or "ms" for min secs.
+    """
+    mins, secs = divmod(seconds, 60)
+    if format == "ms":
+        t = "{:d}m:{:02d}s".format(int(mins), int(secs))
+    elif format == "hms":
+        h, mins = divmod(mins, 60)
+        t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    else:
+        raise Exception("Format {} not available, only 'hms' or 'ms'".format(format))
+    return t
+
 class CombinedLogger(object):
     """Combine console and tensorboard logger and record system metrics.
     """
 
-    def __init__(self, name, log_dir, server_env=True, fold="all"):
+    def __init__(self, name: str, log_dir: str, server_env: bool=True, fold: Union[int, str]="all"):
         self.pylogger = logging.getLogger(name)
         self.tboard = SummaryWriter(log_dir=os.path.join(log_dir, "tboard"))
         self.log_dir = log_dir
@@ -70,7 +86,7 @@ class CombinedLogger(object):
                 return getattr(obj, attr)
         print("logger attr not found")
 
-    def set_logfile(self, fold=None, log_file=None):
+    def set_logfile(self, fold: Union[int, str, None]=None, log_file: Union[str, None]=None):
         if fold is not None:
             self.fold = str(fold)
         if log_file is None:
@@ -127,7 +143,7 @@ class CombinedLogger(object):
         #self.tboard.close()
 
 
-def get_logger(exp_dir, server_env=False):
+def get_logger(exp_dir: str, server_env: bool=False) -> CombinedLogger:
     """
     creates logger instance. writing out info to file, to terminal and to tensorboard.
     :param exp_dir: experiment directory, where exec.log file is stored.
@@ -202,7 +218,7 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
 
 
 
-def import_module(name, path):
+def import_module(name: str, path: str):
     """
     correct way of importing a module dynamically in python 3.
     :param name: name given to module instance.
@@ -215,8 +231,8 @@ def import_module(name, path):
     return module
 
 
-def set_params_flag(module: torch.nn.Module, flag: Tuple[str, Any], check_overwrite: bool = True):
-    """Set an attribute for all module parameters.
+def set_params_flag(module: torch.nn.Module, flag: Tuple[str, Any], check_overwrite: bool = True) -> torch.nn.Module:
+    """Set an attribute for all passed module parameters.
 
     :param flag: tuple (str attribute name : attr value)
     :param check_overwrite: if True, assert that attribute not already exists.
@@ -229,20 +245,21 @@ def set_params_flag(module: torch.nn.Module, flag: Tuple[str, Any], check_overwr
         setattr(param, flag[0], flag[1])
     return module
 
-def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclude_from_wd: Iterable = ("norm",)):
-    """Format network parameters for the optimizer.
-    Convenience function to include options for group-specific settings like weight decay.
-    :param net:
-    :param weight_decay:
+def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclude_from_wd: Iterable = ("norm",)) -> list:
+    """Split network parameters into weight-decay dependent groups for the optimizer.
+    :param net: network.
+    :param weight_decay: weight decay value for the parameters that it is applied to. excluded parameters will have
+        weight decay 0.
     :param exclude_from_wd: List of strings of parameter-group names to exclude from weight decay. Options: "norm", "bias".
     :return:
     """
+    if weight_decay is None:
+        weight_decay = 0.
     # pytorch implements parameter groups as dicts {'params': ...} and
     # weight decay as p.data.mul_(1 - group['lr'] * group['weight_decay'])
     norm_types = [torch.nn.BatchNorm1d, torch.nn.BatchNorm2d, torch.nn.BatchNorm3d,
                   torch.nn.InstanceNorm1d, torch.nn.InstanceNorm2d, torch.nn.InstanceNorm3d,
-                  torch.nn.LayerNorm, torch.nn.GroupNorm, torch.nn.SyncBatchNorm, torch.nn.LocalResponseNorm
-                  ]
+                  torch.nn.LayerNorm, torch.nn.GroupNorm, torch.nn.SyncBatchNorm, torch.nn.LocalResponseNorm]
     level_map = {"bias": "weight",
                  "norm": "module"}
     type_map = {"norm": norm_types}
@@ -290,7 +307,8 @@ class ModelSelector:
         self.saved_epochs = [-1] * cf.save_n_models
         self.logger = logger
 
-    def run_model_selection(self, net, optimizer, monitor_metrics, epoch):
+    def run_model_selection(self, net: torch.nn.Module, optimizer: torch.optim.Optimizer,
+                            monitor_metrics: dict, epoch: int):
 
         # take the mean over all selection criteria in each epoch
         non_nan_scores = np.mean(np.array([[0 if (ii is None or np.isnan(ii)) else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
@@ -339,7 +357,7 @@ class ModelSelector:
 
 
 
-def load_checkpoint(checkpoint_path, net, optimizer):
+def load_checkpoint(checkpoint_path: str, net: torch.nn.Module, optimizer: torch.optim.Optimizer) -> Tuple:
 
     checkpoint = torch.load(os.path.join(checkpoint_path, 'params.pth'))
     net.load_state_dict(checkpoint['state_dict'])

@@ -95,26 +95,18 @@ fi
 
 
 root_dir=/home/ramien #assumes /home/ramien exists
-prep_node=ramien@e132-comp07 #node used for prep tasks like create_exp
 #medicaldetectiontoolkit
 source_dir=${root_dir}/mdt-public
 
 dataset_abs_path=${source_dir}/experiments/${dataset_name} #set as second argument passed to this script
 exp_parent_dir=/datasets/datasets_ramien/${dataset_name}/${exp_parent_dir}
-#exp_parent_dir=/home/gregor/Documents/medicaldetectiontoolkit/datasets/${dataset_name}/experiments #for testing this script
-# /dataset is not mounted on log-in/job submission nodes (would maybe make sense, I feel), only on queue gputest's nodes e132-compXX.
-#ssh ${prep_node} "mkdir -p ${exp_parent_dir}"
 exp_dir=${exp_parent_dir}/${exp_name}
 
 #activate virtualenv that has all the packages:
 source_dl="module load python/3.7.0; module load gcc/7.2.0; source ${root_dir}/.virtualenvs/mdt/bin/activate;"
 
-# TODO as long as no fix available: this script needs to be started directly from the prep node. :/ would be nice if (most importantly
-# 'module ...') would also work over ssh, but somehow some commands are not availabe over the ssh-induced shell (even when using it as interactive).
 eval ${source_dl}
 
-# ssh: (not working)
-#create_cmd="ssh ${prep_node} '${source_dl} python ${source_dir}/exec.py --server_env --mode create_exp --exp_dir ${exp_dir} --exp_source ${dataset_abs_path};'"
 # directly from prep node:
 create_cmd="python ${source_dir}/exec.py --server_env --mode create_exp --exp_dir ${exp_dir} --exp_source ${dataset_abs_path};"
 

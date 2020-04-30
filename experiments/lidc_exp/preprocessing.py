@@ -58,6 +58,7 @@ def pp_patient(inputs):
     ix, path = inputs
     pid = path.split('/')[-1]
     img = sitk.ReadImage(os.path.join(path, '{}_ct_scan.nrrd'.format(pid)))
+    # sitk.GetArray switches an image with shape (x,y,z) to (z,y,x)
     img_arr = sitk.GetArrayFromImage(img)
     print('processing {}'.format(pid), img.GetSpacing(), img_arr.shape)
     img_arr = resample_array(img_arr, img.GetSpacing(), cf.target_spacing)
