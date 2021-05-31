@@ -21,7 +21,7 @@ This is a comprehensive framework for object detection featuring:
 <br/>
 [1] He, Kaiming, et al.  <a href="https://arxiv.org/abs/1703.06870">"Mask R-CNN"</a> ICCV, 2017<br>
 [2] Lin, Tsung-Yi, et al.  <a href="https://arxiv.org/abs/1708.02002">"Focal Loss for Dense Object Detection"</a> TPAMI, 2018.<br>
-[3] Jaeger, Paul et al. <a href="http://arxiv.org/abs/1811.08661"> "Retina U-Net: Embarrassingly Simple Exploitation
+[3] Jaeger, Paul et al. <a href="https://ml4health.github.io/2019/pdf/232_ml4h_preprint.pdf"> "Retina U-Net: Embarrassingly Simple Exploitation
 of Segmentation Supervision for Medical Object Detection" </a>, 2018
 
 [5] https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py<br/>
