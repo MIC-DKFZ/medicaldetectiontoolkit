@@ -1,4 +1,5 @@
 
+## *** MedicalDetectionToolkit is no longer maintained. Please check out our follow-up framework: <a href="https://github.com/MIC-DKFZ/nnDetection"> nnDetection </a> ***
 
 
 [<img src="https://img.shields.io/badge/chat-slack%20channel-75BBC4.svg">](https://join.slack.com/t/mdtoolkit/shared_invite/enQtNTQ3MjY2MzE0MDg2LWNjY2I2Njc5MTY0NmM0ZWIxNmQwZDRhYzk2MDdhM2QxYjliYTcwYzhkNTAxYmRkMDA0MjcyNDMyYjllNTZhY2M)
