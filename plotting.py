@@ -180,17 +180,17 @@ class TrainingPlot_2Panel():
         self.figure_list[0].ax1.set_ylim(0, 1.5)
         self.color_palette = ['b', 'c', 'r', 'purple', 'm', 'y', 'k', 'tab:gray']
 
-    def update_and_save(self, metrics, epoch):
+    def update_and_save(self, metrics, starting_epoch, epoch):
 
         for figure_ix in range(len(self.figure_list)):
             fig = self.figure_list[figure_ix]
-            detection_monitoring_plot(fig.ax1, metrics, self.exp_name, self.color_palette, epoch, figure_ix,
+            detection_monitoring_plot(fig.ax1, metrics, starting_epoch, self.exp_name, self.color_palette, epoch, figure_ix,
                                       self.separate_values_dict,
                                       self.do_validation)
             fig.savefig(self.file_name + '_{}'.format(figure_ix))
 
 
-def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict, do_validation):
+def detection_monitoring_plot(ax1, metrics, starting_epoch, exp_name, color_palette, epoch, figure_ix, separate_values_dict, do_validation):
 
     monitor_values_keys = metrics['train']['monitor_values'][1][0].keys()
     separate_values = [v for fig_ix in separate_values_dict.values() for v in fig_ix]
@@ -217,7 +217,7 @@ def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figu
         if do_validation:
             ax1.plot(x, y_val, label='val_{}'.format(pk), linestyle='-', color=color_palette[kix])
 
-    if epoch == 1:
+    if epoch == starting_epoch:
         box = ax1.get_position()
         ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))

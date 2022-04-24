@@ -100,7 +100,7 @@ def train(logger):
                 model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch)
 
             # update monitoring and prediction plots
-            TrainingPlot.update_and_save(monitor_metrics, epoch)
+            TrainingPlot.update_and_save(monitor_metrics, starting_epoch, epoch)
             epoch_time = time.time() - start_time
             logger.info('trained epoch {}: took {} sec. ({} train / {} val)'.format(
                 epoch, epoch_time, train_time, epoch_time-train_time))
