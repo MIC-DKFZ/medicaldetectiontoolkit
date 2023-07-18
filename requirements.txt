@@ -2,7 +2,7 @@ batchgenerators==0.19.3
 cffi==1.11.5
 cycler==0.10.0
 decorator==4.4.1
-future==0.18.2
+future==0.18.3
 imageio==2.6.1
 kiwisolver==1.1.0
 linecache2==1.0.0
