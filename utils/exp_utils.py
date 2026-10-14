@@ -173,7 +173,7 @@ class ModelSelector:
             # delete params of the epoch that just fell out of the top-k epochs.
             for se in [int(ii.split('_')[0]) for ii in os.listdir(self.cf.fold_dir) if 'best_checkpoint' in ii]:
                 if se in epoch_ranking[self.cf.save_n_models:]:
-                    subprocess.call('rm -rf {}'.format(os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(se))), shell=True)
+                    subprocess.call(['rm', '-rf', '--', os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(se))])
                     self.logger.info('deleting epoch {} at rank {}'.format(se, np.argwhere(epoch_ranking == se)))
 
         state = {
